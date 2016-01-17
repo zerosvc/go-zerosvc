@@ -21,6 +21,7 @@ _vendor/
 cover-cobertura.xml
 cover.json
 report.xml
+report.txt
 
 # Architecture specific extensions/prefixes
 *.[568vq]
