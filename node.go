@@ -13,9 +13,10 @@ type Node struct {
 	TTL  int
 	sync.RWMutex
 	Services map[string]Service
+	Transport Transport
 }
 
-func NewNode(NodeName string, NodeUUID ...string) Node {
+func NewNode(NodeName string, NodeUUID ...string) *Node {
 	var r Node
 	r.Name = NodeName
 	if len(NodeUUID) > 0 {
@@ -26,5 +27,23 @@ func NewNode(NodeName string, NodeUUID ...string) Node {
 		r.UUID = uuid.String()
 	}
 	r.TTL = 120
-	return r
+	return &r
+}
+
+func (n *Node) SetTransport(t Transport) {
+	n.Transport = t
+}
+// convenience methods
+
+func (n *Node) SendEvent(path string, ev Event) error {
+	return n.Transport.SendEvent(path, ev)
+}
+
+func (n *Node) GetEventsCh(filter string) (chan Event, error) {
+	ch := make(chan Event)
+	err := n.Transport.GetEvents(filter, ch)
+	return ch, err
+}
+func (n *Node) GetEvents(filter string, ch chan Event) (error) {
+	return n.Transport.GetEvents(filter, ch)
 }

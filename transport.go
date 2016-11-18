@@ -9,7 +9,10 @@ type Transport interface {
 	AdminCleanup()
 }
 
-func NewTransport(f func(string, interface{}) Transport, addr string, cfg interface{}) Transport {
+func NewTransport(f func(string, interface{}) Transport, addr string, cfg ...interface{}) Transport {
+	if len(cfg) < 1 {
+		cfg = make([]interface{}, 1)
+	}
 	t := f(addr, cfg)
 	return t
 }

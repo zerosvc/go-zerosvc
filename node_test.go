@@ -26,3 +26,12 @@ func TestNode(t *testing.T) {
 		So(node3.UUID, ShouldEqual, node4.UUID)
 	})
 }
+
+func TestNodeTransport(t *testing.T) {
+	node := NewNode("testnode2", "77ab2b23-4f1b-4247-be45-dcc2d93ffb9c")
+	node.SetTransport(NewTransport(TransportDummy, ``))
+	ev := node.NewEvent()
+	ev.Body = []byte("here is more cake")
+	ev.Prepare()
+	node.SendEvent(`/path`,ev)
+}
