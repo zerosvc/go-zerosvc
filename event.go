@@ -5,9 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"time"
+	"fmt"
 )
 
 type Event struct {
+	ReplyTo string // ReplyTo address for RPC-like usage, if underlying transport supports it
+	transport Transport
 	Headers map[string]interface{}
 	Body    []byte
 }
@@ -52,4 +55,11 @@ func (ev *Event) Marshal(v interface{}) error {
 func (ev *Event) Unmarshal(v interface{}) error {
 	err := json.Unmarshal(ev.Body, v)
 	return err
+}
+
+func(ev *Event) Reply(reply Event) error{
+	if len(ev.ReplyTo) < 1 {
+		return fmt.Errorf("No reply-to header in orignal event: %+v", ev)
+	}
+	return ev.transport.SendReply(ev.ReplyTo, reply)
 }

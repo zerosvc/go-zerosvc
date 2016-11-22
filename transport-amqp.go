@@ -32,22 +32,13 @@ func (t *trAMQP) Shutdown() {
 	t.Conn.Close()
 }
 
-func (t *trAMQP) SendEvent(path string, ev Event) error {
-	ch, err := t.Conn.Channel()
-	if err != nil {
-		return err
-	}
-	//
-	//	headers := make(amqp.Table)
-	//	headers["version"] = "1.2.2"
-
+func prepareAMQPMsg(ev *Event) (amqp.Publishing) {
 	msg := amqp.Publishing{
 		DeliveryMode: amqp.Persistent,
 		Timestamp:    time.Now(),
 		ContentType:  "application/json",
 		Body:         ev.Body,
 	}
-	// map headers to AMQP ones
 	has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
 	if has("node-name") {
 		msg.AppId = ev.Headers["node-name"].(string)
@@ -58,11 +49,32 @@ func (t *trAMQP) SendEvent(path string, ev Event) error {
 		delete(ev.Headers,"correlation-id")
 	}
 	msg.Headers =  ev.Headers
+	return msg
+}
 
-
+func (t *trAMQP) SendEvent(path string, ev Event) error {
+	ch, err := t.Conn.Channel()
+	if err != nil {
+		return err
+	}
+	msg := prepareAMQPMsg(&ev)
 	err = ch.Publish("events", path, false, false, msg)
 	return err
 }
+
+func (t *trAMQP) SendReply(addr string, ev Event) (error) {
+	var e error
+	ch, err := t.Conn.Channel()
+	if err != nil {
+		return err
+	}
+	msg := prepareAMQPMsg(&ev)
+	// "" is default exchange that should route to queue specified in path
+	err = ch.Publish("", addr, false, false, msg)
+	return e
+
+}
+
 
 // Prepare a goroutine that will listen for incoming messages matching filter (or if empty, any) and send it to channel
 
@@ -88,7 +100,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 			}
 		}
 	}
-	go amqpEventReceiver(ch, q, channel)
+	go t.amqpEventReceiver(ch, q, channel)
 	return err
 }
 
@@ -117,7 +129,7 @@ func amqpCreateAndBindQueue(ch *amqp.Channel, filter string) (amqp.Queue, error)
 	return q, err
 }
 
-func amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event) {
+func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event) {
 	msgs, err := ch.Consume(
 		q.Name, // queue
 		"",     // consumer
@@ -132,6 +144,7 @@ func amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event) {
 	}
 	for d := range msgs {
 		var ev Event
+		ev.transport=t
 		ev.Headers = d.Headers
 		ev.Headers["_transport-exchange"] = d.Exchange
 		ev.Headers["_transport-RoutingKey"] = d.RoutingKey
@@ -142,6 +155,9 @@ func amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event) {
 		}
 		if len(d.CorrelationId) > 0 && !has("correlation-id") {
 			ev.Headers["correlation-id"] = d.CorrelationId
+		}
+		if len(d.ReplyTo) > 0 {
+			ev.ReplyTo = d.ReplyTo
 		}
 		ev.Body = d.Body
 		c <- ev

@@ -2,6 +2,7 @@ package zerosvc
 
 type Transport interface {
 	SendEvent(path string, ev Event) error
+	SendReply(path string, ev Event) error
 	GetEvents(filter string, channel chan Event) error
 	Connect() error
 	// Shutdown should be called at the end of app
