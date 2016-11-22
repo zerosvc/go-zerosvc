@@ -53,8 +53,10 @@ func (node *Node) PrepareReply(ev Event) Event {
 	has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
 	if has("correlation-id") {
 		reply.Headers["correlation-id"] = ev.Headers["correlation-id"]
-	} else {
+	} else if has("node-id") {
 		reply.Headers["correlation-id"] = ev.Headers["node-name"].(string) + "-" + time.Now().String()
+	} else {
+		reply.Headers["correlation-id"] = "badmsg, recv-by: " +  node.Name + "-" + time.Now().String()
 	}
 	return reply
 }
