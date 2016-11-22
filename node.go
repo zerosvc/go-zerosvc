@@ -3,6 +3,7 @@ package zerosvc
 import (
 	"github.com/satori/go.uuid"
 	"sync"
+	"time"
 )
 
 var namespace = `63082cd1-0f91-48cd-923a-f1523a26549b`
@@ -33,6 +34,31 @@ func NewNode(NodeName string, NodeUUID ...string) *Node {
 func (n *Node) SetTransport(t Transport) {
 	n.Transport = t
 }
+
+// Create empty event. Note that you either need to call PrepareEvent() on it to add checksum/timestamp or add it yourself
+
+func (node *Node) NewEvent() Event {
+	var ev Event
+	ev.Headers = make(map[string]interface{})
+	// always define required keys
+	ev.Headers["node-name"] = node.Name
+	ev.Headers["node-uuid"] = node.UUID
+	ev.Headers["ts"] = time.Unix(0, 0)
+	ev.Headers["sha256"] = ""
+	return ev
+}
+
+func (node *Node) PrepareReply(ev Event) Event {
+	reply := node.NewEvent()
+	has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
+	if has("correlation-id") {
+		reply.Headers["correlation-id"] = ev.Headers["correlation-id"]
+	} else {
+		reply.Headers["correlation-id"] = ev.Headers["node-name"].(string) + "-" + time.Now().String()
+	}
+	return reply
+}
+
 // convenience methods
 
 func (n *Node) SendEvent(path string, ev Event) error {

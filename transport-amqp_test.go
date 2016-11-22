@@ -64,5 +64,13 @@ func TestAMQPTransport(t *testing.T) {
 		})
 		So(string(recv_ev.Body), ShouldResemble, string(ev.Body))
 		So(recv_ev.Headers["node-uuid"], ShouldResemble, ev.Headers["node-uuid"])
+		recv_ev.ReplyTo = "debug"
+		reply := node.PrepareReply(recv_ev)
+		// TODO testme
+		reply.Body = []byte("this is reply")
+		err := recv_ev.Reply(reply)
+		So(err,ShouldEqual,nil)
+
 	})
+
 }
