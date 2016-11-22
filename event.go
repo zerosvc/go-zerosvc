@@ -45,6 +45,9 @@ func (ev *Event) Unmarshal(v interface{}) error {
 	return err
 }
 
+func(ev *Event) IsRPC () bool {
+	return len(ev.ReplyTo) > 0
+}
 
 
 func(ev *Event) Reply(reply Event) error{
