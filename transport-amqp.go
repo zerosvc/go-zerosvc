@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+
 type trAMQP struct {
 	Transport
 	addr string
@@ -36,15 +37,29 @@ func (t *trAMQP) SendEvent(path string, ev Event) error {
 	if err != nil {
 		return err
 	}
+	//
 	//	headers := make(amqp.Table)
 	//	headers["version"] = "1.2.2"
+
 	msg := amqp.Publishing{
 		DeliveryMode: amqp.Persistent,
 		Timestamp:    time.Now(),
 		ContentType:  "application/json",
 		Body:         ev.Body,
-		Headers:      ev.Headers,
 	}
+	// map headers to AMQP ones
+	has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
+	if has("node-name") {
+		msg.AppId = ev.Headers["node-name"].(string)
+		delete(ev.Headers,"node-name")
+	}
+	if has("correlation-id") {
+		msg.CorrelationId = ev.Headers["correlation-id"].(string)
+		delete(ev.Headers,"correlation-id")
+	}
+	msg.Headers =  ev.Headers
+
+
 	err = ch.Publish("events", path, false, false, msg)
 	return err
 }
@@ -121,6 +136,13 @@ func amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event) {
 		ev.Headers["_transport-exchange"] = d.Exchange
 		ev.Headers["_transport-RoutingKey"] = d.RoutingKey
 		ev.Headers["_transport-ContentType"] = d.ContentType
+		has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
+		if len(d.AppId) > 0 && !has("node-name") {
+			ev.Headers["node-name"] = d.AppId
+		}
+		if len(d.CorrelationId) > 0 && !has("correlation-id") {
+			ev.Headers["correlation-id"] = d.CorrelationId
+		}
 		ev.Body = d.Body
 		c <- ev
 	}
