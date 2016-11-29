@@ -4,6 +4,7 @@ import (
 	"github.com/satori/go.uuid"
 	"sync"
 	"time"
+	"fmt"
 )
 
 var namespace = `63082cd1-0f91-48cd-923a-f1523a26549b`
@@ -64,11 +65,17 @@ func (node *Node) PrepareReply(ev Event) Event {
 // convenience methods
 
 func (n *Node) SendEvent(path string, ev Event) error {
+	if n.Transport == nil {
+		return fmt.Errorf("please set transport via SetTransport method")
+	}
 	return n.Transport.SendEvent(path, ev)
 }
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {
 	ch := make(chan Event)
+	if n.Transport == nil {
+		return ch, fmt.Errorf("please set transport via SetTransport method")
+	}
 	err := n.Transport.GetEvents(filter, ch)
 	return ch, err
 }
