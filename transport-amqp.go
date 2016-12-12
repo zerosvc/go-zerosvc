@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-
 type trAMQP struct {
 	Transport
 	addr string
@@ -32,7 +31,7 @@ func (t *trAMQP) Shutdown() {
 	t.Conn.Close()
 }
 
-func prepareAMQPMsg(ev *Event) (amqp.Publishing) {
+func prepareAMQPMsg(ev *Event) amqp.Publishing {
 	msg := amqp.Publishing{
 		DeliveryMode: amqp.Persistent,
 		Timestamp:    time.Now(),
@@ -42,13 +41,13 @@ func prepareAMQPMsg(ev *Event) (amqp.Publishing) {
 	has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
 	if has("node-name") {
 		msg.AppId = ev.Headers["node-name"].(string)
-		delete(ev.Headers,"node-name")
+		delete(ev.Headers, "node-name")
 	}
 	if has("correlation-id") {
 		msg.CorrelationId = ev.Headers["correlation-id"].(string)
-		delete(ev.Headers,"correlation-id")
+		delete(ev.Headers, "correlation-id")
 	}
-	msg.Headers =  ev.Headers
+	msg.Headers = ev.Headers
 	return msg
 }
 
@@ -63,7 +62,7 @@ func (t *trAMQP) SendEvent(path string, ev Event) error {
 	return err
 }
 
-func (t *trAMQP) SendReply(addr string, ev Event) (error) {
+func (t *trAMQP) SendReply(addr string, ev Event) error {
 	var e error
 	ch, err := t.Conn.Channel()
 	if err != nil {
@@ -75,7 +74,6 @@ func (t *trAMQP) SendReply(addr string, ev Event) (error) {
 	return e
 
 }
-
 
 // Prepare a goroutine that will listen for incoming messages matching filter (or if empty, any) and send it to channel
 
@@ -145,7 +143,7 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event)
 	}
 	for d := range msgs {
 		var ev Event
-		ev.transport=t
+		ev.transport = t
 		ev.Headers = d.Headers
 		ev.Headers["_transport-exchange"] = d.Exchange
 		ev.Headers["_transport-RoutingKey"] = d.RoutingKey

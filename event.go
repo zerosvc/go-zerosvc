@@ -4,17 +4,16 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"time"
 	"fmt"
+	"time"
 )
 
 type Event struct {
-	ReplyTo string // ReplyTo address for RPC-like usage, if underlying transport supports it
+	ReplyTo   string // ReplyTo address for RPC-like usage, if underlying transport supports it
 	transport Transport
-	Headers map[string]interface{}
-	Body    []byte
+	Headers   map[string]interface{}
+	Body      []byte
 }
-
 
 // prepare event to be sent and validate it. Includes most of the housekeeping parts like generating hash of body and ts (only if they are not present)
 func (ev *Event) Prepare() error {
@@ -45,12 +44,11 @@ func (ev *Event) Unmarshal(v interface{}) error {
 	return err
 }
 
-func(ev *Event) IsRPC () bool {
+func (ev *Event) IsRPC() bool {
 	return len(ev.ReplyTo) > 0
 }
 
-
-func(ev *Event) Reply(reply Event) error{
+func (ev *Event) Reply(reply Event) error {
 	if len(ev.ReplyTo) < 1 {
 		return fmt.Errorf("No reply-to header in orignal event: %+v", ev)
 	}

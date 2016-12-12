@@ -1,10 +1,10 @@
 package zerosvc
 
 import (
+	"fmt"
 	"github.com/satori/go.uuid"
 	"sync"
 	"time"
-	"fmt"
 )
 
 var namespace = `63082cd1-0f91-48cd-923a-f1523a26549b`
@@ -14,7 +14,7 @@ type Node struct {
 	UUID string
 	TTL  int
 	sync.RWMutex
-	Services map[string]Service
+	Services  map[string]Service
 	Transport Transport
 }
 
@@ -57,7 +57,7 @@ func (node *Node) PrepareReply(ev Event) Event {
 	} else if has("node-id") {
 		reply.Headers["correlation-id"] = ev.Headers["node-name"].(string) + "-" + time.Now().String()
 	} else {
-		reply.Headers["correlation-id"] = "badmsg, recv-by: " +  node.Name + "-" + time.Now().String()
+		reply.Headers["correlation-id"] = "badmsg, recv-by: " + node.Name + "-" + time.Now().String()
 	}
 	return reply
 }
@@ -79,6 +79,6 @@ func (n *Node) GetEventsCh(filter string) (chan Event, error) {
 	err := n.Transport.GetEvents(filter, ch)
 	return ch, err
 }
-func (n *Node) GetEvents(filter string, ch chan Event) (error) {
+func (n *Node) GetEvents(filter string, ch chan Event) error {
 	return n.Transport.GetEvents(filter, ch)
 }

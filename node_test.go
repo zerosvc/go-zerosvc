@@ -33,5 +33,5 @@ func TestNodeTransport(t *testing.T) {
 	ev := node.NewEvent()
 	ev.Body = []byte("here is more cake")
 	ev.Prepare()
-	node.SendEvent(`/path`,ev)
+	node.SendEvent(`/path`, ev)
 }

@@ -69,7 +69,7 @@ func TestAMQPTransport(t *testing.T) {
 		// TODO testme
 		reply.Body = []byte("this is reply")
 		err := recv_ev.Reply(reply)
-		So(err,ShouldEqual,nil)
+		So(err, ShouldEqual, nil)
 
 	})
 
