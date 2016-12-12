@@ -54,6 +54,7 @@ func prepareAMQPMsg(ev *Event) (amqp.Publishing) {
 
 func (t *trAMQP) SendEvent(path string, ev Event) error {
 	ch, err := t.Conn.Channel()
+	defer ch.Close()
 	if err != nil {
 		return err
 	}
