@@ -10,11 +10,26 @@ type trAMQP struct {
 	Transport
 	addr string
 	Conn *amqp.Connection
+	exchange string
+}
+
+type TransportAMQPConfig struct {
+	Heartbeat int
+	EventExchange string
 }
 
 func TransportAMQP(addr string, cfg interface{}) Transport {
 	var t *trAMQP = &trAMQP{}
+	var c TransportAMQPConfig
+	if cfg != nil {
+		c = cfg.(TransportAMQPConfig)
+	}
 	t.addr = addr
+	if len(c.EventExchange) > 0 {
+		t.exchange = c.EventExchange
+	} else {
+		t.exchange = "events"
+	}
 	return t
 }
 
@@ -58,7 +73,7 @@ func (t *trAMQP) SendEvent(path string, ev Event) error {
 		return err
 	}
 	msg := prepareAMQPMsg(&ev)
-	err = ch.Publish("events", path, false, false, msg)
+	err = ch.Publish(t.exchange, path, false, false, msg)
 	return err
 }
 
@@ -85,7 +100,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	if filter == "" {
 		filter = "#"
 	}
-	q, err := amqpCreateAndBindQueue(ch, filter)
+	q, err := t.amqpCreateAndBindQueue(ch, filter)
 	// we only try to create exchange to not take the cost on checking if exchange exists on every connection
 	if err != nil {
 		err = t.amqpCreateEventsExchange()
@@ -93,7 +108,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 			return err
 		} else {
 			ch, err = t.Conn.Channel()
-			q, err = amqpCreateAndBindQueue(ch, filter)
+			q, err = t.amqpCreateAndBindQueue(ch, filter)
 			if err != nil {
 				return err
 			}
@@ -103,7 +118,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	return err
 }
 
-func amqpCreateAndBindQueue(ch *amqp.Channel, filter string) (amqp.Queue, error) {
+func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string) (amqp.Queue, error) {
 	q, err := ch.QueueDeclare(
 		"",    // name
 		false, // durable
@@ -118,7 +133,7 @@ func amqpCreateAndBindQueue(ch *amqp.Channel, filter string) (amqp.Queue, error)
 	err = ch.QueueBind(
 		q.Name,   // queue name
 		filter,   // routing key
-		"events", // exchange
+		t.exchange, // exchange
 		false,
 		nil,
 	)
@@ -184,7 +199,7 @@ func (t *trAMQP) amqpCreateEventsExchange() error {
 	}
 
 	err = ch.ExchangeDeclare(
-		"events", // name
+		t.exchange, // name
 		"topic",  // type
 		true,     // durable
 		false,    // autoDelete

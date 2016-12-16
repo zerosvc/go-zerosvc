@@ -9,11 +9,9 @@ import (
 )
 
 func TestAMQPTransport(t *testing.T) {
-	type cfg struct {
-		Heartbeat int
-	}
-	c := cfg{
+	c := TransportAMQPConfig{
 		Heartbeat: 3,
+		EventExchange: "test-events",
 	}
 	node := NewNode("testnode", "77ab2b23-4f1b-4247-be45-dcc2d93ffb94")
 	ev := node.NewEvent()
@@ -22,6 +20,7 @@ func TestAMQPTransport(t *testing.T) {
 	// default rabbitmq credentials
 	amqpAddr := "amqp://guest:guest@localhost:5672"
 	tr := NewTransport(TransportAMQP, amqpAddr, c)
+	_ = c
 
 	conn_err := tr.Connect()
 	if conn_err != nil {
