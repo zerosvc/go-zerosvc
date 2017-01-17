@@ -4,6 +4,8 @@ import (
 	"github.com/streadway/amqp"
 	"os"
 	"time"
+	"crypto/tls"
+	"strings"
 )
 
 type trAMQP struct {
@@ -11,11 +13,16 @@ type trAMQP struct {
 	addr string
 	Conn *amqp.Connection
 	exchange string
+	cfg *TransportAMQPConfig
 }
 
 type TransportAMQPConfig struct {
 	Heartbeat int
 	EventExchange string
+	// use custom tls.Confg ( will still try default if amqps:// is specified
+	TLS bool
+	// Custom tls.Config for client auth and such
+	TLSConfig *tls.Config
 }
 
 func TransportAMQP(addr string, cfg interface{}) Transport {
@@ -25,6 +32,7 @@ func TransportAMQP(addr string, cfg interface{}) Transport {
 		c = cfg.(TransportAMQPConfig)
 	}
 	t.addr = addr
+	t.cfg = &c
 	if len(c.EventExchange) > 0 {
 		t.exchange = c.EventExchange
 	} else {
@@ -35,7 +43,12 @@ func TransportAMQP(addr string, cfg interface{}) Transport {
 
 func (t *trAMQP) Connect() error {
 	var err error
-	conn, err := amqp.Dial(t.addr)
+	var conn *amqp.Connection
+	if strings.Contains(t.addr, "amqps") && t.cfg.TLS {
+		conn, err = amqp.DialTLS(t.addr, t.cfg.TLSConfig)
+	} else {
+		conn, err = amqp.Dial(t.addr)
+	}
 	if err != nil {
 		return err
 	}
