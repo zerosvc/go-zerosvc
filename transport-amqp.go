@@ -75,6 +75,10 @@ func prepareAMQPMsg(ev *Event) amqp.Publishing {
 		msg.CorrelationId = ev.Headers["correlation-id"].(string)
 		delete(ev.Headers, "correlation-id")
 	}
+	if has("user-id") {
+		msg.UserId = ev.Headers["user-id"].(string)
+		delete(ev.Headers, "user-id")
+	}
 	msg.Headers = ev.Headers
 	return msg
 }
