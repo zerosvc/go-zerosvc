@@ -235,13 +235,13 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 		}
 		if !autoack {
 			ev.NeedsAck = true
-			ev.ack = make(chan bool)
-			go func(ackCh *chan bool, delivery *amqp.Delivery) {
+			ev.ack = make(chan ack)
+			go func(ackCh *chan ack, delivery *amqp.Delivery) {
 				ackDelivery :=<- *ackCh
-				if ackDelivery {
+				if ackDelivery.ack {
 					delivery.Ack(true)
-				} else {
-					delivery.Nack(false, true)
+				} else if ackDelivery.nack {
+					delivery.Nack(false, !ackDelivery.drop)
 				}
 			} (&ev.ack,&d)
 		}
