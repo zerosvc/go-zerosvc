@@ -26,6 +26,20 @@ type TransportAMQPConfig struct {
 	TLS bool
 	// Custom tls.Config for client auth and such
 	TLSConfig *tls.Config
+	// Use persistent queues
+	PersistentQueue bool
+	// generate queue name based on filter so load can be shares between multiple clients
+	// and persisted between restart
+	SharedQueue bool
+	// queue TTL if using persistent ones. Do not set to never delete
+	QueueTTL int64
+	// message TTL in queue
+	MessageTTL int64
+	// dead letter exchange
+	DeadLetterExchange string
+	// queue prefix for non-automatic ones
+	QueuePrefix string
+
 }
 
 func TransportAMQP(addr string, cfg interface{}) Transport {
@@ -42,6 +56,9 @@ func TransportAMQP(addr string, cfg interface{}) Transport {
 		t.exchange = "events"
 	}
 	t.autoack = ! c.NoAutoAck
+	if c.SharedQueue {
+		c.PersistentQueue = true
+	}
 
 	return t
 }
@@ -116,13 +133,17 @@ func (t *trAMQP) SendReply(addr string, ev Event) error {
 
 func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	ch, err := t.Conn.Channel()
+	queueName := ""
+	if t.cfg.SharedQueue {
+		queueName = t.cfg.QueuePrefix + generatePersistentQueueName(t.cfg.EventExchange, filter)
+	}
 	if err != nil {
 		return err
 	}
 	if filter == "" {
 		filter = "#"
 	}
-	q, err := t.amqpCreateAndBindQueue(ch, filter)
+	q, err := t.amqpCreateAndBindQueue(ch, filter, queueName)
 	// we only try to create exchange to not take the cost on checking if exchange exists on every connection
 	if err != nil {
 		err = t.amqpCreateEventsExchange()
@@ -130,7 +151,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 			return err
 		} else {
 			ch, err = t.Conn.Channel()
-			q, err = t.amqpCreateAndBindQueue(ch, filter)
+			q, err = t.amqpCreateAndBindQueue(ch, filter, queueName)
 			if err != nil {
 				return err
 			}
@@ -140,14 +161,31 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	return err
 }
 
-func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string) (amqp.Queue, error) {
+func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string, queueName string) (amqp.Queue, error) {
+	exclusiveQueue := true
+	durableQueue := false
+	queueOpts := make(amqp.Table)
+
+	if len(queueName) > 0 {
+		exclusiveQueue = false
+		durableQueue = true
+		if t.cfg.QueueTTL > 0 {
+			queueOpts["x-expires"] = t.cfg.QueueTTL
+		}
+	}
+	if t.cfg.MessageTTL > 0 {
+		queueOpts["x-message-ttl"] = t.cfg.MessageTTL
+	}
+	if len(t.cfg.DeadLetterExchange) > 0 {
+		queueOpts["x-dead-letter-exchange"] = t.cfg.DeadLetterExchange
+	}
 	q, err := ch.QueueDeclare(
-		"",    // name
-		false, // durable
-		false, // delete when usused
-		true,  // exclusive
+		queueName,    // name
+		durableQueue, // durable
+		false, // delete when unused
+		exclusiveQueue,  // exclusive
 		false, // no-wait
-		nil,   // arguments
+		queueOpts,   // arguments
 	)
 	if err != nil {
 		return q, err
@@ -195,7 +233,7 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 		if len(d.ReplyTo) > 0 {
 			ev.ReplyTo = d.ReplyTo
 		}
-		if autoack {
+		if !autoack {
 			ev.NeedsAck = true
 			ev.ack = make(chan bool)
 			go func(ackCh *chan bool, delivery *amqp.Delivery) {
