@@ -14,11 +14,14 @@ type trAMQP struct {
 	Conn *amqp.Connection
 	exchange string
 	cfg *TransportAMQPConfig
+	autoack bool
 }
 
 type TransportAMQPConfig struct {
 	Heartbeat int
 	EventExchange string
+	// if set to false each event will require acknowledge or cancellation(requeue) via Ack()/Noack() methods
+	NoAutoAck bool
 	// use custom tls.Confg ( will still try default if amqps:// is specified
 	TLS bool
 	// Custom tls.Config for client auth and such
@@ -38,6 +41,8 @@ func TransportAMQP(addr string, cfg interface{}) Transport {
 	} else {
 		t.exchange = "events"
 	}
+	t.autoack = ! c.NoAutoAck
+
 	return t
 }
 
@@ -131,7 +136,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 			}
 		}
 	}
-	go t.amqpEventReceiver(ch, q, channel)
+	go t.amqpEventReceiver(ch, q, channel,t.autoack)
 	return err
 }
 
@@ -160,11 +165,11 @@ func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string) (amqp.Q
 	return q, err
 }
 
-func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event) {
+func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,autoack bool) {
 	msgs, err := ch.Consume(
 		q.Name, // queue
 		"",     // consumer
-		true,   // auto-ack
+		autoack,   // auto-ack
 		false,  // exclusive
 		false,  // no-local
 		false,  // no-wait
@@ -189,6 +194,18 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event)
 		}
 		if len(d.ReplyTo) > 0 {
 			ev.ReplyTo = d.ReplyTo
+		}
+		if autoack {
+			ev.NeedsAck = true
+			ev.ack = make(chan bool)
+			go func(ackCh *chan bool, delivery *amqp.Delivery) {
+				ackDelivery :=<- *ackCh
+				if ackDelivery {
+					delivery.Ack(true)
+				} else {
+					delivery.Nack(false, true)
+				}
+			} (&ev.ack,&d)
 		}
 		ev.Body = d.Body
 		c <- ev

@@ -11,6 +11,8 @@ import (
 type Event struct {
 	ReplyTo   string // ReplyTo address for RPC-like usage, if underlying transport supports it
 	transport Transport
+	ack       chan bool
+	NeedsAck  bool
 	Headers   map[string]interface{}
 	Body      []byte
 }
@@ -53,4 +55,21 @@ func (ev *Event) Reply(reply Event) error {
 		return fmt.Errorf("No reply-to header in orignal event: %+v", ev)
 	}
 	return ev.transport.SendReply(ev.ReplyTo, reply)
+}
+
+func (ev *Event) Ack() {
+	if ev.NeedsAck {
+		ev.ack <- true
+		ev.NeedsAck = false
+	}
+}
+
+func (ev *Event) Nack() error {
+	if ev.NeedsAck {
+		ev.ack <- false
+		ev.NeedsAck = false
+		return nil
+	} else {
+		return fmt.Errorf("tried to send Nack() on event that is in auto-acknowledge mode or was acked already!")
+	}
 }
