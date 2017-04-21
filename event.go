@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+	"sync"
 )
 
 type Event struct {
+	sync.Mutex
 	ReplyTo   string // ReplyTo address for RPC-like usage, if underlying transport supports it
 	transport Transport
 	ack       chan ack
+	Redelivered bool // whether message is first try or another one
 	NeedsAck  bool
 	Headers   map[string]interface{}
 	Body      []byte
@@ -58,16 +61,20 @@ func (ev *Event) Reply(reply Event) error {
 }
 
 func (ev *Event) Ack() {
+	ev.Lock()
+	defer ev.Unlock()
 	if ev.NeedsAck {
 		ev.ack <- ack{ack: true}
 		ev.NeedsAck = false
 	}
 }
-
-func (ev *Event) Nack(d ...bool) error {
+// set to true to drop instead of requeueing
+func (ev *Event) Nack(Drop ...bool) error {
+	ev.Lock()
+	defer ev.Unlock()
 	if ev.NeedsAck {
-		if len(d) > 0 {
-			ev.ack <- ack{nack: true, drop: d[0]}
+		if len(Drop) > 0 {
+			ev.ack <- ack{nack: true, drop: Drop[0]}
 		} else {
 			ev.ack <- ack{nack: true}
 		}

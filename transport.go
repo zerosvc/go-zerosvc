@@ -3,9 +3,8 @@ package zerosvc
 type Transport interface {
 	SendEvent(path string, ev Event) error
 	SendReply(path string, ev Event) error
+	// returns channel with new events. channel will close on error
 	GetEvents(filter string, channel chan Event) error
-	// create persistent queue if possible for given transport, if not map return error
-	GetEventsPersistent(filter string, channel chan Event) error
 	Connect() error
 	// Shutdown should be called at the end of app
 	Shutdown()

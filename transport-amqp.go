@@ -2,10 +2,10 @@ package zerosvc
 
 import (
 	"github.com/streadway/amqp"
-	"os"
 	"time"
 	"crypto/tls"
 	"strings"
+	"fmt"
 )
 
 type trAMQP struct {
@@ -133,6 +133,17 @@ func (t *trAMQP) SendReply(addr string, ev Event) error {
 
 func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	ch, err := t.Conn.Channel()
+	// errch := make(chan *amqp.Error)
+	// t.Conn.NotifyClose(errch)
+	// ch.NotifyClose(errch)
+	// go func(bb *chan *amqp.Error) {
+	// 	fmt.Println(" ----- WAITING FOR ERRORS ----- ")
+	// 	for z := range *bb {
+	// 		panic(fmt.Sprintf("%+v",z))
+	// 	}
+	// }(&errch)
+
+
 	queueName := ""
 	if t.cfg.SharedQueue {
 		queueName = t.cfg.QueuePrefix + generatePersistentQueueName(t.cfg.EventExchange, filter)
@@ -223,6 +234,7 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 		ev.Headers["_transport-exchange"] = d.Exchange
 		ev.Headers["_transport-RoutingKey"] = d.RoutingKey
 		ev.Headers["_transport-ContentType"] = d.ContentType
+		ev.Redelivered =  d.Redelivered
 		has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
 		if len(d.AppId) > 0 && !has("node-name") {
 			ev.Headers["node-name"] = d.AppId
@@ -236,22 +248,22 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 		if !autoack {
 			ev.NeedsAck = true
 			ev.ack = make(chan ack)
-			go func(ackCh *chan ack, delivery *amqp.Delivery) {
+			go func(ackCh *chan ack, delivery amqp.Delivery) {
 				ackDelivery :=<- *ackCh
+
 				if ackDelivery.ack {
 					delivery.Ack(true)
 				} else if ackDelivery.nack {
 					delivery.Nack(false, !ackDelivery.drop)
+				} else {
+					panic(fmt.Sprintf("%+v", ackDelivery))
 				}
-			} (&ev.ack,&d)
+			} (&ev.ack,d)
 		}
 		ev.Body = d.Body
 		c <- ev
 	}
-	c <- Event{
-		Body: []byte("dc1?"),
-	}
-	os.Exit(1)
+	close(c)
 }
 
 // **DESTRUCTIVE**
