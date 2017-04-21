@@ -18,6 +18,6 @@ func NewTransport(f func(string, interface{}) Transport, addr string, cfg ...int
 	if len(cfg) > 0 {
 		return f(addr, cfg[0])
 	} else {
-		return f(addr,nil)
+		return f(addr, nil)
 	}
 }

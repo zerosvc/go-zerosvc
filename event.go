@@ -5,19 +5,21 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"time"
 	"sync"
+	"time"
 )
 
 type Event struct {
-	sync.Mutex
-	ReplyTo   string // ReplyTo address for RPC-like usage, if underlying transport supports it
-	transport Transport
-	ack       chan ack
+	// Lock for ack/nacking the message (if transport supports/requires it).
+	// Unused if given transport tolerates multiple acks for same message
+	ackLock     *sync.Mutex
+	ReplyTo     string // ReplyTo address for RPC-like usage, if underlying transport supports it
+	transport   Transport
+	ack         chan ack
 	Redelivered bool // whether message is first try or another one
-	NeedsAck  bool
-	Headers   map[string]interface{}
-	Body      []byte
+	NeedsAck    bool
+	Headers     map[string]interface{}
+	Body        []byte
 }
 
 // prepare event to be sent and validate it. Includes most of the housekeeping parts like generating hash of body and ts (only if they are not present)
@@ -61,17 +63,22 @@ func (ev *Event) Reply(reply Event) error {
 }
 
 func (ev *Event) Ack() {
-	ev.Lock()
-	defer ev.Unlock()
+	if ev.ackLock != nil {
+		ev.ackLock.Lock()
+		defer ev.ackLock.Unlock()
+	}
 	if ev.NeedsAck {
 		ev.ack <- ack{ack: true}
 		ev.NeedsAck = false
 	}
 }
+
 // set to true to drop instead of requeueing
 func (ev *Event) Nack(Drop ...bool) error {
-	ev.Lock()
-	defer ev.Unlock()
+	if ev.ackLock != nil {
+		ev.ackLock.Lock()
+		defer ev.ackLock.Unlock()
+	}
 	if ev.NeedsAck {
 		if len(Drop) > 0 {
 			ev.ack <- ack{nack: true, drop: Drop[0]}
@@ -86,7 +93,7 @@ func (ev *Event) Nack(Drop ...bool) error {
 }
 
 type ack struct {
-	ack bool
+	ack  bool
 	nack bool
 	drop bool
 }

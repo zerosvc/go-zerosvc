@@ -1,24 +1,25 @@
 package zerosvc
 
 import (
-	"github.com/streadway/amqp"
-	"time"
 	"crypto/tls"
-	"strings"
 	"fmt"
+	"github.com/streadway/amqp"
+	"strings"
+	"sync"
+	"time"
 )
 
 type trAMQP struct {
 	Transport
-	addr string
-	Conn *amqp.Connection
+	addr     string
+	Conn     *amqp.Connection
 	exchange string
-	cfg *TransportAMQPConfig
-	autoack bool
+	cfg      *TransportAMQPConfig
+	autoack  bool
 }
 
 type TransportAMQPConfig struct {
-	Heartbeat int
+	Heartbeat     int
 	EventExchange string
 	// if set to false each event will require acknowledge or cancellation(requeue) via Ack()/Noack() methods
 	NoAutoAck bool
@@ -39,7 +40,10 @@ type TransportAMQPConfig struct {
 	DeadLetterExchange string
 	// queue prefix for non-automatic ones
 	QueuePrefix string
-
+	// max received messages in flight (not acked)
+	MaxInFlightRecv int
+	// max sent messages in flight TODO (currently sent messages are auto ack by default)
+    //	MaxInFlightSent int
 }
 
 func TransportAMQP(addr string, cfg interface{}) Transport {
@@ -50,12 +54,11 @@ func TransportAMQP(addr string, cfg interface{}) Transport {
 	}
 	t.addr = addr
 	t.cfg = &c
-	if len(c.EventExchange) > 0 {
-		t.exchange = c.EventExchange
-	} else {
-		t.exchange = "events"
+	if len(c.EventExchange) < 1 {
+		c.EventExchange = "events"
 	}
-	t.autoack = ! c.NoAutoAck
+	t.exchange = "events"
+	t.autoack = !c.NoAutoAck
 	if c.SharedQueue {
 		c.PersistentQueue = true
 	}
@@ -133,6 +136,9 @@ func (t *trAMQP) SendReply(addr string, ev Event) error {
 
 func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	ch, err := t.Conn.Channel()
+	if t.cfg.MaxInFlightRecv > 0 {
+		ch.Qos(t.cfg.MaxInFlightRecv, 0, false)
+	}
 	// errch := make(chan *amqp.Error)
 	// t.Conn.NotifyClose(errch)
 	// ch.NotifyClose(errch)
@@ -142,7 +148,6 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	// 		panic(fmt.Sprintf("%+v",z))
 	// 	}
 	// }(&errch)
-
 
 	queueName := ""
 	if t.cfg.SharedQueue {
@@ -168,7 +173,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 			}
 		}
 	}
-	go t.amqpEventReceiver(ch, q, channel,t.autoack)
+	go t.amqpEventReceiver(ch, q, channel, t.autoack)
 	return err
 }
 
@@ -191,19 +196,19 @@ func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string, queueNa
 		queueOpts["x-dead-letter-exchange"] = t.cfg.DeadLetterExchange
 	}
 	q, err := ch.QueueDeclare(
-		queueName,    // name
-		durableQueue, // durable
-		false, // delete when unused
-		exclusiveQueue,  // exclusive
-		false, // no-wait
-		queueOpts,   // arguments
+		queueName,      // name
+		durableQueue,   // durable
+		false,          // delete when unused
+		exclusiveQueue, // exclusive
+		false,          // no-wait
+		queueOpts,      // arguments
 	)
 	if err != nil {
 		return q, err
 	}
 	err = ch.QueueBind(
-		q.Name,   // queue name
-		filter,   // routing key
+		q.Name,     // queue name
+		filter,     // routing key
 		t.exchange, // exchange
 		false,
 		nil,
@@ -214,15 +219,15 @@ func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string, queueNa
 	return q, err
 }
 
-func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,autoack bool) {
+func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event, autoack bool) {
 	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		autoack,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
+		q.Name,  // queue
+		"",      // consumer
+		autoack, // auto-ack
+		false,   // exclusive
+		false,   // no-local
+		false,   // no-wait
+		nil,     // args
 	)
 	if err != nil {
 		//fixme send error to something ?
@@ -234,7 +239,7 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 		ev.Headers["_transport-exchange"] = d.Exchange
 		ev.Headers["_transport-RoutingKey"] = d.RoutingKey
 		ev.Headers["_transport-ContentType"] = d.ContentType
-		ev.Redelivered =  d.Redelivered
+		ev.Redelivered = d.Redelivered
 		has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
 		if len(d.AppId) > 0 && !has("node-name") {
 			ev.Headers["node-name"] = d.AppId
@@ -246,10 +251,12 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 			ev.ReplyTo = d.ReplyTo
 		}
 		if !autoack {
+			// RabbitMQ WILL drop channel if ACK/NACK is repeated for same delivery ID, so lock it so it can only be run once
+			ev.ackLock = &sync.Mutex{}
 			ev.NeedsAck = true
 			ev.ack = make(chan ack)
 			go func(ackCh *chan ack, delivery amqp.Delivery) {
-				ackDelivery :=<- *ackCh
+				ackDelivery := <-*ackCh
 
 				if ackDelivery.ack {
 					delivery.Ack(true)
@@ -258,7 +265,7 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 				} else {
 					panic(fmt.Sprintf("%+v", ackDelivery))
 				}
-			} (&ev.ack,d)
+			}(&ev.ack, d)
 		}
 		ev.Body = d.Body
 		c <- ev
@@ -284,11 +291,11 @@ func (t *trAMQP) amqpCreateEventsExchange() error {
 
 	err = ch.ExchangeDeclare(
 		t.exchange, // name
-		"topic",  // type
-		true,     // durable
-		false,    // autoDelete
-		false,    // internal
-		false,    // no wait
+		"topic",    // type
+		true,       // durable
+		false,      // autoDelete
+		false,      // internal
+		false,      // no wait
 		nil,
 	)
 	return err

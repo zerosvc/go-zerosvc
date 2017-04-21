@@ -10,7 +10,7 @@ import (
 
 func TestAMQPTransport(t *testing.T) {
 	c := TransportAMQPConfig{
-		Heartbeat: 3,
+		Heartbeat:     3,
 		EventExchange: "test-events",
 	}
 	node := NewNode("testnode", "77ab2b23-4f1b-4247-be45-dcc2d93ffb94")
