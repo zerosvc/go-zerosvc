@@ -104,6 +104,10 @@ func prepareAMQPMsg(ev *Event) amqp.Publishing {
 		msg.UserId = ev.Headers["user-id"].(string)
 		delete(ev.Headers, "user-id")
 	}
+	if has("_transport-ttl") {
+		// TODO coerce any ints into string (ms)
+		msg.Expiration = ev.Headers["_transport-ttl"].(string)
+	}
 	msg.Headers = ev.Headers
 	return msg
 }
