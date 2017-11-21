@@ -1,0 +1,8 @@
+package: github.com/zerosvc/go-zerosvc
+import:
+- package: github.com/satori/go.uuid
+- package: github.com/streadway/amqp
+testImport:
+- package: github.com/smartystreets/goconvey
+  subpackages:
+  - convey

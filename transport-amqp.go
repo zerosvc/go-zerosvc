@@ -43,7 +43,7 @@ type TransportAMQPConfig struct {
 	// max received messages in flight (not acked)
 	MaxInFlightRecv int
 	// max sent messages in flight TODO (currently sent messages are auto ack by default)
-    //	MaxInFlightSent int
+	//	MaxInFlightSent int
 }
 
 func TransportAMQP(addr string, cfg interface{}) Transport {
