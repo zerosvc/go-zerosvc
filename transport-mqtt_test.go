@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func TestAMQPTransport(t *testing.T) {
-	c := TransportAMQPConfig{
+func TestMQTTransport(t *testing.T) {
+	c := TransportMQTTConfig{
 		Heartbeat:     3,
 		EventExchange: "test-events",
 	}
@@ -19,12 +19,11 @@ func TestAMQPTransport(t *testing.T) {
 	ev.Body = []byte("here is some cake")
 	ev.Prepare()
 	// default rabbitmq credentials
-	amqpAddr := "amqp://guest:guest@localhost:5672"
-	if len(os.Getenv("AMQP_URL")) > 0 {
-		amqpAddr = os.Getenv("AMQP_URL")
+	amqpAddr := "tcp://127.0.0.1:1883"
+	if len(os.Getenv("MQTT_URL")) > 0 {
+		amqpAddr = os.Getenv("MQTT_URL")
 	}
-
-	tr := NewTransport(TransportAMQP, amqpAddr, c)
+	tr := NewTransport(TransportMQTT, amqpAddr, c)
 	_ = c
 
 	conn_err := tr.Connect()
