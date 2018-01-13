@@ -11,8 +11,6 @@ import (
 
 func TestMQTTransport(t *testing.T) {
 	c := TransportMQTTConfig{
-		Heartbeat:     3,
-		EventExchange: "test-events",
 	}
 	node := NewNode("testnode", "77ab2b23-4f1b-4247-be45-dcc2d93ffb94")
 	ev := node.NewEvent()
@@ -34,7 +32,6 @@ func TestMQTTransport(t *testing.T) {
 	Convey("Connection successful", t, func() {
 		So(conn_err, ShouldEqual, nil)
 	})
-	tr.AdminCleanup()
 	ch := make(chan Event, 1)
 	var pathName string
 	rndBytes := make([]byte, 16)
@@ -45,6 +42,7 @@ func TestMQTTransport(t *testing.T) {
 	} else {
 		pathName = fmt.Sprintf("%X", rndBytes)
 	}
+		pathName = "test"
 
 	chan_err := tr.GetEvents(pathName, ch)
 	Convey("Setup receive channel", t, func() {

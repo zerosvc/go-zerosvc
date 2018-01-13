@@ -43,4 +43,5 @@ _testmain.go
 
 # local test data
 
+env.sh
 t-data/*local

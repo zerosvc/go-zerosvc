@@ -22,6 +22,13 @@ type Event struct {
 	Body        []byte
 }
 
+func newEvent() Event {
+	var e Event
+	e.ackLock = &sync.Mutex{}
+	e.Headers = make(map[string]interface{})
+	return e
+}
+
 // prepare event to be sent and validate it. Includes most of the housekeeping parts like generating hash of body and ts (only if they are not present)
 func (ev *Event) Prepare() error {
 	var err error
