@@ -9,22 +9,19 @@ import (
 	"time"
 )
 
-func TestAMQPTransport(t *testing.T) {
-	c := TransportAMQPConfig{
-		Heartbeat:     3,
-		EventExchange: "test-events",
+func TestMQTTransport(t *testing.T) {
+	c := TransportMQTTConfig{
 	}
 	node := NewNode("testnode", "77ab2b23-4f1b-4247-be45-dcc2d93ffb94")
 	ev := node.NewEvent()
 	ev.Body = []byte("here is some cake")
 	ev.Prepare()
 	// default rabbitmq credentials
-	amqpAddr := "amqp://guest:guest@localhost:5672"
-	if len(os.Getenv("AMQP_URL")) > 0 {
-		amqpAddr = os.Getenv("AMQP_URL")
+	amqpAddr := "tcp://127.0.0.1:1883"
+	if len(os.Getenv("MQTT_URL")) > 0 {
+		amqpAddr = os.Getenv("MQTT_URL")
 	}
-
-	tr := NewTransport(TransportAMQP, amqpAddr, c)
+	tr := NewTransport(TransportMQTT, amqpAddr, c)
 	_ = c
 
 	conn_err := tr.Connect()
@@ -35,7 +32,6 @@ func TestAMQPTransport(t *testing.T) {
 	Convey("Connection successful", t, func() {
 		So(conn_err, ShouldEqual, nil)
 	})
-	tr.AdminCleanup()
 	ch := make(chan Event, 1)
 	var pathName string
 	rndBytes := make([]byte, 16)
@@ -46,6 +42,7 @@ func TestAMQPTransport(t *testing.T) {
 	} else {
 		pathName = fmt.Sprintf("%X", rndBytes)
 	}
+		pathName = "test"
 
 	chan_err := tr.GetEvents(pathName, ch)
 	Convey("Setup receive channel", t, func() {
