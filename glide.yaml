@@ -4,3 +4,4 @@ import:
  - package: github.com/streadway/amqp
  - package: github.com/smartystreets/goconvey/convey
  - package: github.com/satori/go.uuid
+ - package: github.com/eclipse/paho.mqtt.golang
