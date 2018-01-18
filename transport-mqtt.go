@@ -88,7 +88,7 @@ func (t *trMQTT) SendReply(addr string, ev Event) error {
 
 func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 	if token := t.client.Subscribe(filter, 0, func(client mqtt.Client, msg mqtt.Message) {
-		ev := newEvent()
+		ev := NewEvent()
 		ev.transport = t
 		// TODO do something about err ? send as pseudo-event ?
 		err := json.Unmarshal(msg.Payload(),&ev)

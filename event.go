@@ -22,7 +22,7 @@ type Event struct {
 	Body        []byte
 }
 
-func newEvent() Event {
+func NewEvent() Event {
 	var e Event
 	e.ackLock = &sync.Mutex{}
 	e.Headers = make(map[string]interface{})
