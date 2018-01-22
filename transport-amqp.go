@@ -236,6 +236,8 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 	)
 	if err != nil {
 		//fixme send error to something ?
+		close(c)
+		return
 	}
 	for d := range msgs {
 		var ev Event
