@@ -178,8 +178,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 			}
 		}
 	}
-	go t.amqpEventReceiver(ch, q, channel, t.autoack)
-	return err
+	return t.amqpEventReceiver(ch, q, channel, t.autoack)
 }
 
 func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string, queueName string) (amqp.Queue, error) {
@@ -224,7 +223,7 @@ func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string, queueNa
 	return q, err
 }
 
-func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event, autoack bool) {
+func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event, autoack bool)  error{
 	msgs, err := ch.Consume(
 		q.Name,  // queue
 		"",      // consumer
@@ -236,48 +235,51 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 	)
 	if err != nil {
 		//fixme send error to something ?
-		close(c)
-		return
+		return fmt.Errorf("Error while trying to consume queue[%s]: %s",q.Name,err)
 	}
-	for d := range msgs {
-		var ev Event
-		ev.transport = t
-		ev.Headers = d.Headers
-		ev.Headers["_transport-exchange"] = d.Exchange
-		ev.Headers["_transport-RoutingKey"] = d.RoutingKey
-		ev.Headers["_transport-ContentType"] = d.ContentType
-		ev.Redelivered = d.Redelivered
-		has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
-		if len(d.AppId) > 0 && !has("node-name") {
-			ev.Headers["node-name"] = d.AppId
-		}
-		if len(d.CorrelationId) > 0 && !has("correlation-id") {
-			ev.Headers["correlation-id"] = d.CorrelationId
-		}
-		if len(d.ReplyTo) > 0 {
-			ev.ReplyTo = d.ReplyTo
-		}
-		if !autoack {
-			// RabbitMQ WILL drop channel if ACK/NACK is repeated for same delivery ID, so lock it so it can only be run once
-			ev.ackLock = &sync.Mutex{}
-			ev.NeedsAck = true
-			ev.ack = make(chan ack)
-			go func(ackCh *chan ack, delivery amqp.Delivery) {
-				ackDelivery := <-*ackCh
+	go func () {
+		for d := range msgs {
+			var ev Event
+			ev.transport = t
+			ev.Headers = d.Headers
+			ev.Headers["_transport-exchange"] = d.Exchange
+			ev.Headers["_transport-RoutingKey"] = d.RoutingKey
+			ev.Headers["_transport-ContentType"] = d.ContentType
+			ev.Redelivered = d.Redelivered
+			has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
+			if len(d.AppId) > 0 && !has("node-name") {
+				ev.Headers["node-name"] = d.AppId
+			}
+			if len(d.CorrelationId) > 0 && !has("correlation-id") {
+				ev.Headers["correlation-id"] = d.CorrelationId
+			}
+			if len(d.ReplyTo) > 0 {
+				ev.ReplyTo = d.ReplyTo
+			}
+			if !autoack {
+				// RabbitMQ WILL drop channel if ACK/NACK is repeated for same delivery ID, so lock it so it can only be run once
+				ev.ackLock = &sync.Mutex{}
+				ev.NeedsAck = true
+				ev.ack = make(chan ack)
+				go func(ackCh *chan ack, delivery amqp.Delivery) {
+					ackDelivery := <-*ackCh
 
-				if ackDelivery.ack {
-					delivery.Ack(true)
-				} else if ackDelivery.nack {
-					delivery.Nack(false, !ackDelivery.drop)
-				} else {
-					panic(fmt.Sprintf("%+v", ackDelivery))
-				}
-			}(&ev.ack, d)
+					if ackDelivery.ack {
+						delivery.Ack(true)
+					} else if ackDelivery.nack {
+						delivery.Nack(false, !ackDelivery.drop)
+					} else {
+						panic(fmt.Sprintf("%+v", ackDelivery))
+					}
+				}(&ev.ack, d)
+			}
+			ev.Body = d.Body
+			c <- ev
 		}
-		ev.Body = d.Body
-		c <- ev
-	}
-	close(c)
+		close(c)
+	} ()
+	return nil
+
 }
 
 // **DESTRUCTIVE**
