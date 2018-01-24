@@ -59,6 +59,10 @@ func TransportAMQP(addr string, cfg interface{}) Transport {
 	} else {
 		t.exchange = c.EventExchange
 	}
+	if len(c.QueuePrefix) < 1 {
+		c.QueuePrefix = t.exchange
+	}
+
 	t.autoack = !c.NoAutoAck
 	if c.SharedQueue {
 		c.PersistentQueue = true
