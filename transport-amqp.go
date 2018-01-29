@@ -160,7 +160,7 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 
 	queueName := ""
 	if t.cfg.SharedQueue {
-		queueName = t.cfg.QueuePrefix + generatePersistentQueueName(t.cfg.EventExchange, filter)
+		queueName = t.cfg.QueuePrefix + "-shared-" + generatePersistentQueueName(filter)
 	}
 	if err != nil {
 		return err

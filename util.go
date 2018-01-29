@@ -6,19 +6,15 @@ import (
 	"strings"
 )
 
-func generatePersistentQueueName(target string, routingKey string) string {
-	tgtPart := target
-	routingPart := routingKey
-	if len(tgtPart) > 8 {
-		tgtPart = tgtPart[:8]
+func generatePersistentQueueName(filter string, hashkeys ...string) string {
+	routingPart := filter
+		if len(routingPart) > 24 {
+		routingPart = routingPart[:24]
 	}
-	if len(routingPart) > 16 {
-		routingPart = routingPart[:16]
-	}
-	st := "sms-evqueue"
+	st := filter + strings.Join(hashkeys,"\000")
 	h := sha512.New()
 	h.Write([]byte(st))
 	hash := fmt.Sprintf("%x", h.Sum(nil))
 
-	return strings.Join([]string{tgtPart, routingPart, hash[:16]}, "-")
+	return strings.Join([]string{routingPart, hash[:32]}, "-")
 }
