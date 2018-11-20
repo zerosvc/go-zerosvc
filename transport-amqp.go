@@ -119,10 +119,10 @@ func prepareAMQPMsg(ev *Event) amqp.Publishing {
 
 func (t *trAMQP) SendEvent(path string, ev Event) error {
 	ch, err := t.Conn.Channel()
-	defer ch.Close()
 	if err != nil {
 		return err
 	}
+	defer ch.Close()
 	msg := prepareAMQPMsg(&ev)
 	err = ch.Publish(t.exchange, path, false, false, msg)
 	return err
@@ -134,6 +134,7 @@ func (t *trAMQP) SendReply(addr string, ev Event) error {
 	if err != nil {
 		return err
 	}
+	defer ch.Close()
 	msg := prepareAMQPMsg(&ev)
 	// "" is default exchange that should route to queue specified in path
 	err = ch.Publish("", addr, false, false, msg)
@@ -145,6 +146,9 @@ func (t *trAMQP) SendReply(addr string, ev Event) error {
 
 func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	ch, err := t.Conn.Channel()
+	if err != nil {
+		return err
+	}
 	if t.cfg.MaxInFlightRecv > 0 {
 		ch.Qos(t.cfg.MaxInFlightRecv, 0, false)
 	}
@@ -162,9 +166,6 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 	if t.cfg.SharedQueue {
 		queueName = t.cfg.QueuePrefix + "-shared-" + generatePersistentQueueName(filter)
 	}
-	if err != nil {
-		return err
-	}
 	if filter == "" {
 		filter = "#"
 	}
@@ -176,6 +177,9 @@ func (t *trAMQP) GetEvents(filter string, channel chan Event) error {
 			return err
 		} else {
 			ch, err = t.Conn.Channel()
+			if err != nil {
+				return err
+			}
 			q, err = t.amqpCreateAndBindQueue(ch, filter, queueName)
 			if err != nil {
 				return err
@@ -227,7 +231,7 @@ func (t *trAMQP) amqpCreateAndBindQueue(ch *amqp.Channel, filter string, queueNa
 	return q, err
 }
 
-func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event, autoack bool)  error{
+func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event, autoack bool) error {
 	msgs, err := ch.Consume(
 		q.Name,  // queue
 		"",      // consumer
@@ -239,9 +243,9 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 	)
 	if err != nil {
 		//fixme send error to something ?
-		return fmt.Errorf("Error while trying to consume queue[%s]: %s",q.Name,err)
+		return fmt.Errorf("Error while trying to consume queue[%s]: %s", q.Name, err)
 	}
-	go func () {
+	go func() {
 		for d := range msgs {
 			var ev Event
 			ev.transport = t
@@ -281,7 +285,7 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 			c <- ev
 		}
 		close(c)
-	} ()
+	}()
 	return nil
 
 }

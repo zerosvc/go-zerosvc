@@ -10,13 +10,12 @@ import (
 )
 
 func TestMQTTransport(t *testing.T) {
-	c := TransportMQTTConfig{
-	}
+	c := TransportMQTTConfig{}
 	node := NewNode("testnode", "77ab2b23-4f1b-4247-be45-dcc2d93ffb94")
 	ev := node.NewEvent()
 	ev.Body = []byte("here is some cake")
 	ev.Prepare()
-	// default rabbitmq credentials
+	// default mqtt credentials
 	amqpAddr := "tcp://127.0.0.1:1883"
 	if len(os.Getenv("MQTT_URL")) > 0 {
 		amqpAddr = os.Getenv("MQTT_URL")
@@ -26,7 +25,7 @@ func TestMQTTransport(t *testing.T) {
 
 	conn_err := tr.Connect()
 	if conn_err != nil {
-		SkipConvey(fmt.Sprintf("Can't connect to default rabbitmq on [%s]", amqpAddr), t, func() {})
+		SkipConvey(fmt.Sprintf("Can't connect to default mqtt on [%s]", amqpAddr), t, func() {})
 		return
 	}
 	Convey("Connection successful", t, func() {
@@ -42,7 +41,7 @@ func TestMQTTransport(t *testing.T) {
 	} else {
 		pathName = fmt.Sprintf("%X", rndBytes)
 	}
-		pathName = "test"
+	pathName = "test"
 
 	chan_err := tr.GetEvents(pathName, ch)
 	Convey("Setup receive channel", t, func() {

@@ -91,7 +91,7 @@ func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 		ev := NewEvent()
 		ev.transport = t
 		// TODO do something about err ? send as pseudo-event ?
-		err := json.Unmarshal(msg.Payload(),&ev)
+		err := json.Unmarshal(msg.Payload(), &ev)
 		fmt.Printf("RECEIVED %+v %+v", ev, err)
 
 		channel <- ev
