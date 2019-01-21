@@ -250,6 +250,9 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 			var ev Event
 			ev.transport = t
 			ev.Headers = d.Headers
+			if ev.Headers == nil {
+				ev.Headers = make(map[string]interface{})
+			}
 			ev.Headers["_transport-exchange"] = d.Exchange
 			ev.Headers["_transport-RoutingKey"] = d.RoutingKey
 			ev.Headers["_transport-ContentType"] = d.ContentType
