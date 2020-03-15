@@ -13,7 +13,7 @@ func TestHeartbeat(t *testing.T) {
 
 	Convey("Heartbeat fields", t, func() {
 		So(ev.Headers, ShouldContainKey, "node-uuid")
-		So(string(ev.Body), ShouldContainSubstring, "Body")
+		So(string(ev.Body), ShouldContainSubstring, "body")
 		So(string(ev.Body), ShouldNotContainSubstring, "1970-01-01")
 	})
 	Convey("Non-zero timestampt", t, func() {

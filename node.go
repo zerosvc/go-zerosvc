@@ -32,8 +32,9 @@ func NewNode(NodeName string, NodeUUID ...string) *Node {
 	return &r
 }
 
-func (n *Node) SetTransport(t Transport) {
+func (n *Node) SetTransport(t Transport) *Node {
 	n.Transport = t
+	return n
 }
 
 // Create empty event. Note that you either need to call PrepareEvent() on it to add checksum/timestamp or add it yourself

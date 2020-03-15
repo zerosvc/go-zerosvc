@@ -74,7 +74,7 @@ func (t *trMQTT) SendEvent(path string, ev Event) error {
 	if err != nil {
 		return err
 	}
-	token := t.client.Publish("test", 0, false, msg)
+	token := t.client.Publish(path, 0, false, msg)
 	// TODO add async mode
 	token.Wait()
 	return err

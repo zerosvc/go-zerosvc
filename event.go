@@ -13,13 +13,13 @@ type Event struct {
 	// Lock for ack/nacking the message (if transport supports/requires it).
 	// Unused if given transport tolerates multiple acks for same message
 	ackLock     *sync.Mutex
-	ReplyTo     string // ReplyTo address for RPC-like usage, if underlying transport supports it
+	ReplyTo     string `json:"reply_to"` // ReplyTo address for RPC-like usage, if underlying transport supports it
 	transport   Transport
 	ack         chan ack
-	Redelivered bool // whether message is first try or another one
-	NeedsAck    bool
-	Headers     map[string]interface{}
-	Body        []byte
+	Redelivered bool `json:"redelivered"`// whether message is first try or another one
+	NeedsAck    bool `json:"needs_ack"`
+	Headers     map[string]interface{} `json:"headers"`
+	Body        []byte `json:"body"`
 }
 
 func NewEvent() Event {
