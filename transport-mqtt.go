@@ -2,9 +2,12 @@ package zerosvc
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/url"
+	"time"
 
 	"github.com/eclipse/paho.mqtt.golang"
 )
@@ -54,6 +57,29 @@ func (t *trMQTT) Connect() error {
 		clientOpts.Username = urlParsed.User.Username()
 		clientOpts.Password, _ = urlParsed.User.Password()
 	}
+	if urlParsed.Scheme == "tls" {
+		var tlsCfg tls.Config
+		if len(urlParsed.Query().Get("cert")) > 0 {
+			certPath := urlParsed.Query().Get("cert")
+			keyPath := urlParsed.Query().Get("certkey")
+			if len(keyPath) == 0 {
+				keyPath = certPath
+			}
+			cert, err := tls.LoadX509KeyPair(certPath,keyPath)
+			if err != nil {return fmt.Errorf("error loading cert/key: %s",err)}
+			tlsCfg.Certificates = []tls.Certificate{cert}
+		}
+		if len(urlParsed.Query().Get("ca")) > 0 {
+			certpool := x509.NewCertPool()
+			pem, err := ioutil.ReadFile(urlParsed.Query().Get("ca"))
+			if err != nil {
+				return fmt.Errorf("error loading CA: %s", err)
+			}
+			certpool.AppendCertsFromPEM(pem)
+			tlsCfg.RootCAs = certpool
+		}
+		clientOpts.SetTLSConfig(&tlsCfg)
+	}
 	t.client = mqtt.NewClient(clientOpts)
 	if connectToken := t.client.Connect(); connectToken.Wait() && connectToken.Error() != nil {
 		return fmt.Errorf("Could not connect to MQTT: %s", connectToken.Error())
@@ -74,13 +100,19 @@ func (t *trMQTT) SendEvent(path string, ev Event) error {
 	if err != nil {
 		return err
 	}
-	token := t.client.Publish(path, 0, false, msg)
+	retained := false
+	if !ev.RetainTill.IsZero() && ev.RetainTill.After(time.Now()) {
+		retained = true
+	}
+	token := t.client.Publish(path, 0, retained, msg)
 	// TODO add async mode
 	token.Wait()
 	return err
 }
 
-func (t *trMQTT) SendReply(addr string, ev Event) error {
+func (t *trMQTT) SendReply(path string, ev Event) error {
+	ev.ReplyTo=""
+	t.SendEvent(path,ev)
 	return nil
 }
 
@@ -92,8 +124,8 @@ func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 		ev.transport = t
 		// TODO do something about err ? send as pseudo-event ?
 		err := json.Unmarshal(msg.Payload(), &ev)
-		fmt.Printf("RECEIVED %+v %+v", ev, err)
-
+		_ =  err
+		ev.RoutingKey = msg.Topic()
 		channel <- ev
 	}); token.Wait() && token.Error() != nil {
 		return fmt.Errorf("subscription failed: %s", token.Error())

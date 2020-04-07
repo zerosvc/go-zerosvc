@@ -31,9 +31,5 @@ func (node *Node) NewHeartbeat() Event {
 	ev := node.NewEvent()
 	ev.Body, _ = json.Marshal(hb)
 	ev.Prepare()
-	out, _ := json.Marshal(ev)
-
-	ev.Body = out
-	ev.Prepare()
 	return ev
 }

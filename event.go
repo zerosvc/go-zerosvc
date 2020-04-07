@@ -13,13 +13,19 @@ type Event struct {
 	// Lock for ack/nacking the message (if transport supports/requires it).
 	// Unused if given transport tolerates multiple acks for same message
 	ackLock     *sync.Mutex
-	ReplyTo     string `json:"reply_to"` // ReplyTo address for RPC-like usage, if underlying transport supports it
+	ReplyTo     string `json:"reply_to,omitempty"` // ReplyTo address for RPC-like usage, if underlying transport supports it
 	transport   Transport
 	ack         chan ack
-	Redelivered bool `json:"redelivered"`// whether message is first try or another one
-	NeedsAck    bool `json:"needs_ack"`
+	Redelivered bool `json:"redelivered,omitempty"`// whether message is first try or another one
+	NeedsAck    bool `json:"needs_ack,omitempty"`
+	// for how long message should be retained if transport supports it
+	// actual TTL will be calculated from current time difference
+	RetainTill     time.Time `json:"retain_till,omitempty"`
+	// incoming routing key
+	RoutingKey  string `json:"routing_key,omitempty"`
 	Headers     map[string]interface{} `json:"headers"`
 	Body        []byte `json:"body"`
+	prepared    bool
 }
 
 func NewEvent() Event {
@@ -27,6 +33,21 @@ func NewEvent() Event {
 	e.ackLock = &sync.Mutex{}
 	e.Headers = make(map[string]interface{})
 	return e
+}
+// NodeName() returns name of node that sent the event
+func (ev *Event)NodeName() string {
+	if val, ok := ev.Headers["node-name"].(string); ok {
+		return val
+	}
+	return ""
+}
+
+// NodeUUID() returns UUID of node that sent the event
+func (ev *Event)NodeUUID() string {
+	if val, ok := ev.Headers["node-uuid"].(string); ok {
+		return val
+	}
+	return ""
 }
 
 // prepare event to be sent and validate it. Includes most of the housekeeping parts like generating hash of body and ts (only if they are not present)
@@ -39,6 +60,7 @@ func (ev *Event) Prepare() error {
 	if ev.Headers["ts"] == time.Unix(0, 0) {
 		ev.Headers["ts"] = time.Now()
 	}
+	ev.prepared = true
 	return err
 }
 
@@ -62,9 +84,28 @@ func (ev *Event) IsRPC() bool {
 	return len(ev.ReplyTo) > 0
 }
 
+func (ev *Event) Send(path string) error {
+	if !ev.prepared {
+		err :=  ev.Prepare()
+		if err != nil {
+			return err
+		}
+	}
+	if ev.transport == nil {
+		return fmt.Errorf("event has no transport")
+	}
+	return ev.transport.SendEvent(path,*ev)
+}
+
 func (ev *Event) Reply(reply Event) error {
 	if len(ev.ReplyTo) < 1 {
 		return fmt.Errorf("No reply-to header in orignal event: %+v", ev)
+	}
+	if !reply.prepared {
+		err := reply.Prepare()
+		if err != nil {
+			return err
+		}
 	}
 	return ev.transport.SendReply(ev.ReplyTo, reply)
 }

@@ -255,6 +255,7 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 			}
 			ev.Headers["_transport-exchange"] = d.Exchange
 			ev.Headers["_transport-RoutingKey"] = d.RoutingKey
+			ev.RoutingKey = d.RoutingKey
 			ev.Headers["_transport-ContentType"] = d.ContentType
 			ev.Redelivered = d.Redelivered
 			has := func(key string) bool { _, ok := ev.Headers[key]; return ok }

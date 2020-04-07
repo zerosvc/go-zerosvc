@@ -21,6 +21,7 @@ type Node struct {
 func NewNode(NodeName string, NodeUUID ...string) *Node {
 	var r Node
 	r.Name = NodeName
+	r.Services = make(map[string]Service,0)
 	if len(NodeUUID) > 0 {
 		r.UUID = NodeUUID[0]
 	} else {
@@ -47,6 +48,7 @@ func (node *Node) NewEvent() Event {
 	ev.Headers["node-uuid"] = node.UUID
 	ev.Headers["ts"] = time.Unix(0, 0)
 	ev.Headers["sha256"] = ""
+	ev.transport = node.Transport
 	return ev
 }
 
