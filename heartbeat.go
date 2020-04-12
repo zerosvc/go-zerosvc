@@ -35,6 +35,8 @@ func (n *Node) NewHeartbeat() Event {
 	}
 	n.RUnlock()
 	ev := n.NewEvent()
+	validity := time.Now().Add(n.TTL)
+	ev.RetainTill = &validity
 	ev.Body, _ = json.Marshal(hb)
 	ev.Prepare()
 	return ev
@@ -45,7 +47,7 @@ func (n *Node)Heartbeater(path ...string) {
 	for {
 		ev := n.NewHeartbeat()
 		if len(path) == 0 {
-			n.SendEvent("heartbeat/node-"+n.Name, ev)
+			n.SendEvent(n.HeartbeatPath(), ev)
 		} else {
 			n.SendEvent(path[0], ev)
 		}

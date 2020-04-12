@@ -20,10 +20,15 @@ type Node struct {
 	// signer governs storing public/private key and decoding the signatures
 	Signer Signer
 	PubkeyRetriever func(nodeName string, nodeUUID string) (v Verifier, found bool)
+	discoveryPath string
+	heartbeatEnabled bool
 
 
 	Transport Transport
 }
+
+
+
 
 func NewNode(NodeName string, NodeUUID ...string) *Node {
 	var r Node
@@ -49,6 +54,10 @@ func NewNodeWithTransport(
 func (n *Node) SetTransport(t Transport) *Node {
 	n.Transport = t
 	return n
+}
+
+func (n *Node) HeartbeatPath() string {
+	return "discovery/node-" + n.Name
 }
 
 // Create empty event. Note that you either need to call PrepareEvent() on it to add checksum/timestamp or add it yourself

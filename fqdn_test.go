@@ -6,6 +6,9 @@ import (
 )
 
 func TestGetFQDN(t *testing.T) {
-	fqdn := GetFQDN()
-	assert.NotEqual(t,"",fqdn)
+	fqdn1 := GetFQDN()
+	fqdn2 := GetFQDN()
+	assert.NotEqual(t,"",fqdn1)
+	assert.Equal(t,fqdn1,fqdn2)
+
 }

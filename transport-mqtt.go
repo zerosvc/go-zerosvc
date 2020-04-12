@@ -145,7 +145,6 @@ func (t *trMQTT) Connect() error {
 	if connectToken := t.client.Connect(); connectToken.Wait() && connectToken.Error() != nil {
 		return fmt.Errorf("Could not connect to MQTT: %s", connectToken.Error())
 	}
-
 	return nil
 }
 func (t *trMQTT) Shutdown() {
