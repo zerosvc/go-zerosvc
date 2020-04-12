@@ -127,16 +127,13 @@ func (n *Node) VerifyEvent(ev *Event) (ok bool, err error) {
 				return false, fmt.Errorf("logic returned verifier empty but found!")
 			} else {
 				return verifier.Verify(ev.Body, vSig), nil
-
 			}
-
 		default:
 			return false, fmt.Errorf("sig type ID %d unsupported", t)
 		}
 	} else {
 		return false, fmt.Errorf("expected _ev-sig string header")
 	}
-
 }
 
 // convenience methods
@@ -169,7 +166,7 @@ func (n *Node) GetEvents(filter string, ch chan Event) error {
 // GetReplyChan() returns randomly generated channel for replies
 func (n *Node) GetReplyChan() (path string, replyCh chan Event, err error) {
 	id := mapBytesToTopicTitle(rngBlob(16))
-	path = "reply/" + GetFQDN() + "/" + id
+	path = "reply/node-" + n.Name + "/" + id
 	rspCh, err := n.GetEventsCh(path + "/#")
 	return path, rspCh, err
 }
