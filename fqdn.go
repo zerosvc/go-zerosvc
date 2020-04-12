@@ -13,10 +13,9 @@ var currentFQDN string
 var currentFQDNTS time.Time
 var currentFQDNTSLock sync.Mutex
 
-
 // GetFQDN tries to get fqdn from os (via hostname) and fails back on system resolver.
 func GetFQDN() string {
-	if time.Now().Before(currentFQDNTS.Add(time.Minute * 10)) && currentFQDN != "" {
+	if time.Now().Before(currentFQDNTS.Add(time.Minute*10)) && currentFQDN != "" {
 		currentFQDNTSLock.Lock()
 		defer currentFQDNTSLock.Unlock()
 		return currentFQDN
@@ -26,7 +25,7 @@ func GetFQDN() string {
 	out, err := exec.Command("hostname", "--fqdn").Output()
 	if err == nil {
 		sysFQDN := strings.TrimSpace(string(out))
-		if strings.Contains(sysFQDN,goHostname) {
+		if strings.Contains(sysFQDN, goHostname) {
 			currentFQDNTSLock.Lock()
 			currentFQDN = sysFQDN
 			currentFQDNTS = time.Now()

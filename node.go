@@ -1,9 +1,12 @@
 package zerosvc
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"github.com/satori/go.uuid"
+	"log"
+	"strings"
 	"sync"
 	"time"
 )
@@ -16,19 +19,15 @@ type Node struct {
 	Info map[string]interface{}
 	TTL  time.Duration
 	sync.RWMutex
-	Services  map[string]Service
+	Services map[string]Service
 	// signer governs storing public/private key and decoding the signatures
-	Signer Signer
-	PubkeyRetriever func(nodeName string, nodeUUID string) (v Verifier, found bool)
-	discoveryPath string
+	Signer           Signer
+	PubkeyRetriever  func(nodeName string, nodeUUID string) (v Verifier, found bool)
+	discoveryPath    string
 	heartbeatEnabled bool
-
 
 	Transport Transport
 }
-
-
-
 
 func NewNode(NodeName string, NodeUUID ...string) *Node {
 	var r Node
@@ -87,48 +86,52 @@ func (n *Node) PrepareReply(ev Event) Event {
 	return reply
 }
 
-func (n *Node)SignEvent(ev *Event) error {
+func (n *Node) SignEvent(ev *Event) error {
 	if n.Signer == nil {
 		return fmt.Errorf("tried to sign without defined signer")
 	}
 	rawSig := n.Signer.Sign(ev.Body)
 
-	sigPkt := []byte{ n.Signer.Type(),uint8(len(rawSig)),}
-	sigPkt = append(sigPkt,rawSig...)
+	sigPkt := []byte{n.Signer.Type(), uint8(len(rawSig))}
+	sigPkt = append(sigPkt, rawSig...)
 	ev.Headers["_sec-sig"] = base64.StdEncoding.EncodeToString(sigPkt)
 	return nil
 }
 
-func (n *Node)VerifyEvent(ev *Event) (ok bool, err error) {
+func (n *Node) VerifyEvent(ev *Event) (ok bool, err error) {
 	if n.PubkeyRetriever == nil {
 		return false, fmt.Errorf("tried to verify without a way to retrieve signatures")
 	}
-	if v, ok := ev.Headers["_sec-sig"].(string);ok {
-		sig,err  := base64.StdEncoding.DecodeString(v)
-		if err != nil { return false, err}
-		if len(sig) < 4 {return false, fmt.Errorf("sig too short")}
+	if v, ok := ev.Headers["_sec-sig"].(string); ok {
+		sig, err := base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			return false, err
+		}
+		if len(sig) < 4 {
+			return false, fmt.Errorf("sig too short")
+		}
 		t := uint8(sig[0])
 		l := uint8(sig[1])
 		vSig := sig[2:]
 		if int(l) != len(vSig) {
-			return false, fmt.Errorf("sig length mismatch: %d/%d",l+1, len(vSig))
+			return false, fmt.Errorf("sig length mismatch: %d/%d", l+1, len(vSig))
 		}
 		switch t {
 		case 0:
 			return false, fmt.Errorf("sig invalid, wrong type")
-		case SigTypeEd25519,SigTypeX509:
-			verifier,found :=  n.PubkeyRetriever(n.Name,n.UUID)
+		case SigTypeEd25519, SigTypeX509:
+			verifier, found := n.PubkeyRetriever(n.Name, n.UUID)
 			if !found {
-				return false,nil
-			} else if verifier == nil  {
+				return false, nil
+			} else if verifier == nil {
 				return false, fmt.Errorf("logic returned verifier empty but found!")
 			} else {
-				return verifier.Verify(ev.Body, vSig),nil
+				return verifier.Verify(ev.Body, vSig), nil
 
 			}
 
 		default:
-			return false, fmt.Errorf("sig type ID %d unsupported",t)
+			return false, fmt.Errorf("sig type ID %d unsupported", t)
 		}
 	} else {
 		return false, fmt.Errorf("expected _ev-sig string header")
@@ -144,7 +147,9 @@ func (n *Node) SendEvent(path string, ev Event) error {
 	}
 	if n.Signer != nil {
 		err := n.SignEvent(&ev)
-		if err != nil {return err}
+		if err != nil {
+			return err
+		}
 	}
 	return n.Transport.SendEvent(path, ev)
 }
@@ -159,4 +164,43 @@ func (n *Node) GetEventsCh(filter string) (chan Event, error) {
 }
 func (n *Node) GetEvents(filter string, ch chan Event) error {
 	return n.Transport.GetEvents(filter, ch)
+}
+
+// GetReplyChan() returns randomly generated channel for replies
+func (n *Node) GetReplyChan() (path string, replyCh chan Event, err error) {
+	id := mapBytesToTopicTitle(rngBlob(16))
+	path = "reply/" + GetFQDN() + "/" + id
+	rspCh, err := n.GetEventsCh(path + "/#")
+	return path, rspCh, err
+}
+
+func rngBlob(bytes int) []byte {
+	rnd := make([]byte, bytes)
+	i, err := rand.Read(rnd)
+	if err == nil && i == bytes {
+		return rnd
+	}
+	var errctr uint8
+	var readctr = i
+	for {
+		errctr++
+		if errctr > 10 {
+			log.Panicf("could not get data from RNG")
+		}
+		i, err := rand.Read(rnd[readctr:])
+		if i > 0 {
+			readctr += i
+		} else {
+			panic(fmt.Sprintf("error getting RNG: %s", err))
+		}
+		if readctr >= bytes {
+			return rnd
+		}
+	}
+}
+
+// MapBytesToTopicTitle maps binary data to topic-friendly subset of characters.
+func mapBytesToTopicTitle(data []byte) string {
+	str := base64.StdEncoding.EncodeToString(data)
+	return strings.Trim(str, "/+=")
 }

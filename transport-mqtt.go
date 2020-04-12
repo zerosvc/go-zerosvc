@@ -40,10 +40,8 @@ type TransportMQTTConfig struct {
 	LastWillTopic string
 	// message. Sent zero + LastWillRetain if you want to clear retained message
 	LastWillMessage []byte
-	LastWillRetain bool
-	LastWillQos uint8
-
-
+	LastWillRetain  bool
+	LastWillQos     uint8
 }
 
 func TransportMQTT(addr string, cfg interface{}) Transport {
@@ -85,7 +83,7 @@ func (t *trMQTT) Connect() error {
 		clientOpts.Password, _ = urlParsed.User.Password()
 	}
 	if len(t.cfg.LastWillTopic) > 0 {
-		clientOpts.WillEnabled=true
+		clientOpts.WillEnabled = true
 		clientOpts.WillTopic = t.cfg.LastWillTopic
 		clientOpts.WillPayload = t.cfg.LastWillMessage
 		clientOpts.WillRetained = t.cfg.LastWillRetain

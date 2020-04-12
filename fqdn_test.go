@@ -8,7 +8,7 @@ import (
 func TestGetFQDN(t *testing.T) {
 	fqdn1 := GetFQDN()
 	fqdn2 := GetFQDN()
-	assert.NotEqual(t,"",fqdn1)
-	assert.Equal(t,fqdn1,fqdn2)
+	assert.NotEqual(t, "", fqdn1)
+	assert.Equal(t, fqdn1, fqdn2)
 
 }

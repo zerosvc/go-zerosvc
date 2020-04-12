@@ -1,6 +1,7 @@
 package zerosvc
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"time"
 )
@@ -25,13 +26,18 @@ func (n *Node) NewHeartbeat() Event {
 	hb.NodeUUID = n.UUID
 	hb.TS = time.Now().Unix()
 	hb.HBInterval = int(n.TTL.Seconds()) / 3
-	hb.TTL = int(n.TTL)
+	hb.TTL = int(n.TTL.Seconds())
 	hb.NodeInfo = n.Info
 	for k, v := range n.Services {
 		hb.Services[k] = v
 	}
 	if n.Signer != nil {
-
+		pubkeyPkt := make([]byte, 2)
+		pubkeyPkt[0] = n.Signer.Type()
+		key := n.Signer.PublicKey()
+		pubkeyPkt[1] = uint8(len(key))
+		pubkeyPkt = append(pubkeyPkt, key...)
+		hb.NodePubkey = base64.StdEncoding.EncodeToString(pubkeyPkt)
 	}
 	n.RUnlock()
 	ev := n.NewEvent()
@@ -43,7 +49,7 @@ func (n *Node) NewHeartbeat() Event {
 }
 
 // Heartbeater runs heartbeat. Run in goroutine
-func (n *Node)Heartbeater(path ...string) {
+func (n *Node) Heartbeater(path ...string) {
 	for {
 		ev := n.NewHeartbeat()
 		if len(path) == 0 {
@@ -52,6 +58,6 @@ func (n *Node)Heartbeater(path ...string) {
 			n.SendEvent(path[0], ev)
 		}
 
-		time.Sleep(n.TTL/3)
+		time.Sleep(n.TTL / 3)
 	}
 }
