@@ -176,29 +176,32 @@ func (t *trMQTT) SendReply(path string, ev Event) error {
 
 // Prepare a goroutine that will listen for incoming messages matching filter (or if empty, any) and send it to channel
 func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
-	if token := t.client.Subscribe(filter, 0, func(client mqtt.Client, msg mqtt.Message) {
-		// overhead is tiny as of go-1.14 and it allows client to close channel without this side panicking
-		defer func() {
-			if recover() != nil {
-				t.client.Unsubscribe(filter)
-			}
-		}()
-		ev := NewEvent()
-		ev.transport = t
-		// TODO do something about err ? send as pseudo-event ?
-		err := json.Unmarshal(msg.Payload(), &ev)
-		_ = err
-		ev.RoutingKey = msg.Topic()
+	if token := t.client.Subscribe(filter,
+		0,
+		func(client mqtt.Client, msg mqtt.Message) {
+			// overhead is tiny as of go-1.14 and it allows client to close channel without this side panicking
+			defer func() {
+				if recover() != nil {
+					t.client.Unsubscribe(filter)
+				}
+			}()
+			ev := NewEvent()
+			ev.transport = t
+			// TODO do something about err ? send as pseudo-event ?
+			err := json.Unmarshal(msg.Payload(), &ev)
+			_ = err
+			ev.RoutingKey = msg.Topic()
 
-		channel <- ev
-	}); token.Wait() && token.Error() != nil {
+			channel <- ev
+		}); token.WaitTimeout(time.Second * 30) && token.Error() != nil {
 		close(channel)
 		return fmt.Errorf("subscription failed: %s", token.Error())
 	}
 	t.Lock()
+	defer t.Unlock()
+
 	t.closers = append(t.closers, func() {
 		close(channel)
 	})
-	t.Unlock()
 	return nil
 }
