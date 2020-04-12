@@ -3,6 +3,9 @@
 
 Go bindings for [zerosvc](https://github.com/zerosvc/zerosvc)
 
+
+
+
 ## Event field mapping
 
 MQTTv3 format is whole event serialized into JSON
@@ -24,6 +27,10 @@ AMQP/MQTTv5 uses headers and puts body as-is
 | `node-name`      | ---    | retained | AppId  |
 | `correlation-id` | ---    | retained | CorrelationId  |
 | `user-id`        | ---    | retained | UserId  |
+
+other:
+
+* topic of incoming messages is encoded in `RoutingKey
 
 
 ## MQTT URL options

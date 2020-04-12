@@ -16,16 +16,18 @@ type Event struct {
 	ReplyTo     string `json:"reply_to,omitempty"` // ReplyTo address for RPC-like usage, if underlying transport supports it
 	transport   Transport
 	ack         chan ack
-	Redelivered bool `json:"redelivered,omitempty"`// whether message is first try or another one
+	Redelivered bool `json:"redelivered,omitempty"` // whether message is first try or another one
 	NeedsAck    bool `json:"needs_ack,omitempty"`
 	// for how long message should be retained if transport supports it
 	// actual TTL will be calculated from current time difference
-	RetainTill     time.Time `json:"retain_till,omitempty"`
+	RetainTill *time.Time `json:"retain_till,omitempty"`
 	// incoming routing key
-	RoutingKey  string `json:"routing_key,omitempty"`
-	Headers     map[string]interface{} `json:"headers"`
-	Body        []byte `json:"body"`
-	prepared    bool
+	RoutingKey string                 `json:"routing_key,omitempty"`
+	Headers    map[string]interface{} `json:"headers"`
+	Body       []byte                 `json:"body"`
+	// signature of the body
+	Signature string `json:"sig,omitempty"`
+	prepared  bool
 }
 
 func NewEvent() Event {
@@ -34,8 +36,9 @@ func NewEvent() Event {
 	e.Headers = make(map[string]interface{})
 	return e
 }
+
 // NodeName() returns name of node that sent the event
-func (ev *Event)NodeName() string {
+func (ev *Event) NodeName() string {
 	if val, ok := ev.Headers["node-name"].(string); ok {
 		return val
 	}
@@ -43,11 +46,36 @@ func (ev *Event)NodeName() string {
 }
 
 // NodeUUID() returns UUID of node that sent the event
-func (ev *Event)NodeUUID() string {
+func (ev *Event) NodeUUID() string {
 	if val, ok := ev.Headers["node-uuid"].(string); ok {
 		return val
 	}
 	return ""
+}
+func (ev *Event) TS() time.Time {
+	if val, ok := ev.Headers["ts"]; ok {
+		switch v := val.(type) {
+		case time.Time:
+			return v
+		case int:
+			return time.Unix(int64(v), 0)
+		case float64:
+			return time.Unix(int64(v), int64((v-float64(int64(v)))*float64(time.Second)))
+		case float32:
+			return time.Unix(int64(v), int64((v-float32(int64(v)))*float32(time.Second)))
+		case string:
+			ts, err := time.Parse(time.RFC3339, v)
+			if err == nil {
+				return ts
+			} else {
+				return time.Time{}
+			}
+		default:
+			return time.Time{}
+		}
+	} else {
+		return time.Time{}
+	}
 }
 
 // prepare event to be sent and validate it. Includes most of the housekeeping parts like generating hash of body and ts (only if they are not present)
@@ -86,7 +114,7 @@ func (ev *Event) IsRPC() bool {
 
 func (ev *Event) Send(path string) error {
 	if !ev.prepared {
-		err :=  ev.Prepare()
+		err := ev.Prepare()
 		if err != nil {
 			return err
 		}
@@ -94,12 +122,20 @@ func (ev *Event) Send(path string) error {
 	if ev.transport == nil {
 		return fmt.Errorf("event has no transport")
 	}
-	return ev.transport.SendEvent(path,*ev)
+	return ev.transport.SendEvent(path, *ev)
 }
 
 func (ev *Event) Reply(reply Event) error {
 	if len(ev.ReplyTo) < 1 {
 		return fmt.Errorf("No reply-to header in orignal event: %+v", ev)
+	}
+	has := func(key string) bool { _, ok := ev.Headers[key]; return ok }
+	if has("correlation-id") {
+		reply.Headers["correlation-id"] = ev.Headers["correlation-id"]
+	} else if has("node-name") {
+		reply.Headers["correlation-id"] = ev.Headers["node-name"].(string) + "-" + time.Now().Format(time.RFC3339)
+	} else {
+		return fmt.Errorf("missing node-name in event")
 	}
 	if !reply.prepared {
 		err := reply.Prepare()

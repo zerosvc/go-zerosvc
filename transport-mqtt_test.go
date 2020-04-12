@@ -39,7 +39,7 @@ func TestMQTTransport(t *testing.T) {
 		fmt.Println("error:", err)
 		pathName = "test"
 	} else {
-		pathName = fmt.Sprintf("test/%X/%X/%X/%X", rndBytes[0:4],rndBytes[4:8],rndBytes[8:12],rndBytes[12:16])
+		pathName = fmt.Sprintf("test/%X/%X/%X/%X", rndBytes[0:4], rndBytes[4:8], rndBytes[8:12], rndBytes[12:16])
 	}
 
 	chan_err := tr.GetEvents(pathName, ch)
