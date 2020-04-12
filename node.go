@@ -37,7 +37,7 @@ func NewNode(NodeName string, NodeUUID ...string) *Node {
 		uuid := uuid.NewV5(ns, NodeName)
 		r.UUID = uuid.String()
 	}
-	r.TTL = time.Duration(120 * time.Second)
+	r.TTL = 120 * time.Second
 	return &r
 }
 

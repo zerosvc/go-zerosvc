@@ -41,10 +41,15 @@ func (n *Node) NewHeartbeat() Event {
 }
 
 // Heartbeater runs heartbeat. Run in goroutine
-func (n *Node)Heartbeater() {
+func (n *Node)Heartbeater(path ...string) {
 	for {
 		ev := n.NewHeartbeat()
-		n.SendEvent("heartbeat/node-" + n.Name,ev)
+		if len(path) == 0 {
+			n.SendEvent("heartbeat/node-"+n.Name, ev)
+		} else {
+			n.SendEvent(path[0], ev)
+		}
+
 		time.Sleep(n.TTL/3)
 	}
 }

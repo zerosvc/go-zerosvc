@@ -32,7 +32,6 @@ type trMQTT struct {
 
 type TransportMQTTConfig struct {
 	Heartbeat int
-	Prefix    string
 	// use custom tls.Config
 	TLS bool
 	// Custom tls.Config for client auth and such
