@@ -195,9 +195,15 @@ func rngBlob(bytes int) []byte {
 		}
 	}
 }
+var base64Replacer = strings.NewReplacer(
+	"+", "",
+	"/", "",
+	"=","",
+)
+
 
 // MapBytesToTopicTitle maps binary data to topic-friendly subset of characters.
 func mapBytesToTopicTitle(data []byte) string {
 	str := base64.StdEncoding.EncodeToString(data)
-	return strings.Trim(str, "/+=")
+	return base64Replacer.Replace(str)
 }
