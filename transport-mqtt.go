@@ -205,3 +205,8 @@ func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 	})
 	return nil
 }
+// SetupHeartbeat will be called before Connect() by New() function
+// it is used for transport-specific setup for heartbeats (like setting Will on MQTT)
+func (t *trMQTT)SetupHeartbeat(path string) {
+
+}

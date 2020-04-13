@@ -12,7 +12,10 @@ func TestNew(t *testing.T) {
 	trCfg := cfg{
 		Heartbeat: 3,
 	}
-	node, err := New("test_dummy_node", TransportDummy("dummy://addr", trCfg))
+	node, err := New(Config{
+		NodeName:  "test_dummy_node",
+		Transport: TransportDummy("dummy://addr", trCfg),
+	})
 	ev := node.NewEvent()
 	ev.Body = []byte("here is some cake")
 	ev.Prepare()

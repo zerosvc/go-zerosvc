@@ -9,6 +9,9 @@ type Transport interface {
 	// Shutdown should be called at the end of app
 	Shutdown()
 	AdminCleanup()
+	// SetupHeartbeat will be called before Connect() by New() function
+    // it is used for transport-specific setup for heartbeats (like setting Will on MQTT)
+     SetupHeartbeat(path string)
 }
 
 func NewTransport(f func(string, interface{}) Transport, addr string, cfg ...interface{}) Transport {

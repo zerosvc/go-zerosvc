@@ -13,6 +13,7 @@ import (
 
 var namespace = `63082cd1-0f91-48cd-923a-f1523a26549b`
 
+
 type Node struct {
 	Name string
 	UUID string
@@ -45,10 +46,6 @@ func NewNode(NodeName string, NodeUUID ...string) *Node {
 	return &r
 }
 
-func NewNodeWithTransport(
-	transport Transport, NodeName string, NodeUUID ...string) (*Node, error) {
-	return nil, nil
-}
 
 func (n *Node) SetTransport(t Transport) *Node {
 	n.Transport = t
