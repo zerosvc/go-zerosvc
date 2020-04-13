@@ -152,7 +152,7 @@ func (n *Node) SendEvent(path string, ev Event) error {
 }
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {
-	ch := make(chan Event,1)
+	ch := make(chan Event)
 	if n.Transport == nil {
 		return ch, fmt.Errorf("please set transport via SetTransport method")
 	}

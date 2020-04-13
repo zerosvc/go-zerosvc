@@ -175,6 +175,7 @@ func (t *trMQTT) SendReply(path string, ev Event) error {
 }
 
 // Prepare a goroutine that will listen for incoming messages matching filter (or if empty, any) and send it to channel
+// WARNING currently used lib is unstable if channel is unbuffered
 func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 	if token := t.client.Subscribe(filter,
 		0,
@@ -191,7 +192,6 @@ func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 			err := json.Unmarshal(msg.Payload(), &ev)
 			_ = err
 			ev.RoutingKey = msg.Topic()
-
 			channel <- ev
 		}); !token.WaitTimeout(time.Second * 30) || token.Error() != nil {
 		close(channel)
