@@ -1,11 +1,12 @@
 package zerosvc
 
 import (
-	"fmt"
+	"testing"
 )
 
 type trDummy struct {
 	Transport
+	T *testing.T
 }
 
 // Dummy/debug transport
@@ -16,7 +17,9 @@ func TransportDummy(addr string, cfg interface{}) Transport {
 
 //  print msg to stdout
 func (t *trDummy) SendEvent(path string, ev Event) error {
-	fmt.Printf("SendEvent path: %s, data: %+v\n", path, ev)
+	if t.T != nil {
+		t.T.Logf("SendEvent path: %s, data: %+v\n", path, ev)
+	}
 	var err error
 	return err
 }
@@ -34,7 +37,9 @@ func (t *trDummy) GetEvents(path string, ch chan Event) error {
 
 func (t *trDummy) Connect() error {
 	var err error
-	fmt.Printf("Put your connection start here\n")
+	if t.T != nil {
+		t.T.Logf("Put your connection start here\n")
+	}
 	return err
 }
 func (t *trDummy) SetupHeartbeat(path string) {

@@ -275,9 +275,8 @@ func (t *trAMQP) amqpEventReceiver(ch *amqp.Channel, q amqp.Queue, c chan Event,
 				ev.ack = make(chan ack)
 				go func(ackCh *chan ack, delivery amqp.Delivery) {
 					ackDelivery := <-*ackCh
-
 					if ackDelivery.ack {
-						delivery.Ack(true)
+						delivery.Ack(false)
 					} else if ackDelivery.nack {
 						delivery.Nack(false, !ackDelivery.drop)
 					} else {
