@@ -140,7 +140,7 @@ func (t *trMQTT) Connect() error {
 		clientOpts.SetTLSConfig(&tlsCfg)
 	}
 	t.client = mqtt.NewClient(clientOpts)
-	if connectToken := t.client.Connect(); !connectToken.WaitTimeout(time.Second * 30) || connectToken.Error() != nil {
+	if connectToken := t.client.Connect(); !connectToken.WaitTimeout(time.Second*30) || connectToken.Error() != nil {
 		return fmt.Errorf("Could not connect to MQTT: %s", connectToken.Error())
 	}
 	return nil
@@ -193,7 +193,7 @@ func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 			_ = err
 			ev.RoutingKey = msg.Topic()
 			channel <- ev
-		}); !token.WaitTimeout(time.Second * 30) || token.Error() != nil {
+		}); !token.WaitTimeout(time.Second*30) || token.Error() != nil {
 		close(channel)
 		return fmt.Errorf("subscription failed: %s", token.Error())
 	}
@@ -205,8 +205,9 @@ func (t *trMQTT) GetEvents(filter string, channel chan Event) error {
 	})
 	return nil
 }
+
 // SetupHeartbeat will be called before Connect() by New() function
 // it is used for transport-specific setup for heartbeats (like setting Will on MQTT)
-func (t *trMQTT)SetupHeartbeat(path string) {
+func (t *trMQTT) SetupHeartbeat(path string) {
 
 }

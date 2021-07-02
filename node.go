@@ -13,7 +13,6 @@ import (
 
 var namespace = `63082cd1-0f91-48cd-923a-f1523a26549b`
 
-
 type Node struct {
 	Name string
 	UUID string
@@ -45,7 +44,6 @@ func NewNode(NodeName string, NodeUUID ...string) *Node {
 	r.TTL = 120 * time.Second
 	return &r
 }
-
 
 func (n *Node) SetTransport(t Transport) *Node {
 	n.Transport = t
@@ -192,12 +190,12 @@ func rngBlob(bytes int) []byte {
 		}
 	}
 }
+
 var base64Replacer = strings.NewReplacer(
 	"+", "",
 	"/", "",
-	"=","",
+	"=", "",
 )
-
 
 // MapBytesToTopicTitle maps binary data to topic-friendly subset of characters.
 func mapBytesToTopicTitle(data []byte) string {

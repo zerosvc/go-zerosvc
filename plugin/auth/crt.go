@@ -2,9 +2,9 @@ package auth
 
 import (
 	"crypto/x509"
-//	"encoding/pem"
-	"io/ioutil"
+	//	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 )
 
 type Auth struct {
@@ -16,11 +16,15 @@ func New() *Auth {
 	return &a
 }
 
-func (a *Auth)LoadCA(file string)(err error) {
+func (a *Auth) LoadCA(file string) (err error) {
 	a.root = x509.NewCertPool()
 	out, err := ioutil.ReadFile(file)
-	if err != nil {return}
+	if err != nil {
+		return
+	}
 	ok := a.root.AppendCertsFromPEM([]byte(out))
-	if !ok {return fmt.Errorf("Can't load cert from %s",file)}
+	if !ok {
+		return fmt.Errorf("Can't load cert from %s", file)
+	}
 	return
 }

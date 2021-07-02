@@ -37,6 +37,6 @@ func (t *trDummy) Connect() error {
 	fmt.Printf("Put your connection start here\n")
 	return err
 }
-func (t *trDummy)SetupHeartbeat(path string) {
+func (t *trDummy) SetupHeartbeat(path string) {
 
 }

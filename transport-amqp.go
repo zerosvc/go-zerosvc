@@ -321,8 +321,9 @@ func (t *trAMQP) amqpCreateEventsExchange() error {
 	)
 	return err
 }
+
 // SetupHeartbeat will be called before Connect() by New() function
 // it is used for transport-specific setup for heartbeats (like setting Will on MQTT)
-func (t *trAMQP)SetupHeartbeat(path string) {
+func (t *trAMQP) SetupHeartbeat(path string) {
 	//no setup necesarry for AMQP
 }

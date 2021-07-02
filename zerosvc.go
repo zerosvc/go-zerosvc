@@ -17,11 +17,10 @@ type Config struct {
 	//
 	// * return currently stored value if called with empty `new` parameter
 	// * write whatever is in `new` if not empty
-	AutoSigner func (new []byte) (old []byte)
+	AutoSigner func(new []byte) (old []byte)
 	// function used to sign outgoing packets. XOR with AutoSigner.
 	Signer Signer
 	//
-
 
 }
 
@@ -37,7 +36,7 @@ func New(cfg Config) (*Node, error) {
 		cfg.Transport.SetupHeartbeat(hbPath)
 	}
 	if cfg.Signer != nil && cfg.AutoSigner != nil {
-			return nil,fmt.Errorf("either pass Signer or AutoSigner, not both")
+		return nil, fmt.Errorf("either pass Signer or AutoSigner, not both")
 	}
 	if cfg.AutoSigner != nil {
 		key := cfg.AutoSigner([]byte{})
