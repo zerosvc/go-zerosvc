@@ -140,10 +140,16 @@ func (t *trMQTT) Connect() error {
 		clientOpts.SetTLSConfig(&tlsCfg)
 	}
 	t.client = mqtt.NewClient(clientOpts)
-	if connectToken := t.client.Connect(); !connectToken.WaitTimeout(time.Second*30) || connectToken.Error() != nil {
-		return fmt.Errorf("Could not connect to MQTT: %s", connectToken.Error())
+	connectToken := t.client.Connect()
+	if connectToken.WaitTimeout(time.Second * 30) {
+		return nil
 	}
-	return nil
+	err = connectToken.Error()
+	if err == nil {
+		return fmt.Errorf("Could not connect to MQTT: timeout")
+	} else {
+		return fmt.Errorf("Could not connect to MQTT: %s", err)
+	}
 }
 func (t *trMQTT) Shutdown() {
 	// TODO expose as config

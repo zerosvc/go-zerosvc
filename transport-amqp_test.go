@@ -118,7 +118,7 @@ func TestAMQPTransport_MultiACKqueue(t *testing.T) {
 		err := tr.Connect()
 		require.Nil(t, err)
 		node.SetTransport(tr)
-		ch := make(chan Event, 1)
+		ch := make(chan Event, 10)
 		ch_err := tr.GetEvents("service.test.send.#", ch)
 		require.Nil(t, ch_err)
 
@@ -126,7 +126,7 @@ func TestAMQPTransport_MultiACKqueue(t *testing.T) {
 		go func(readerId int) {
 			for ev := range ch {
 				readersCount[readerId]++
-				time.Sleep(time.Millisecond * 10 * time.Duration(readerId+1))
+				time.Sleep(time.Millisecond * 5 * time.Duration(readerId+1))
 				ev.Ack()
 				if string(ev.Body) == "end" {
 					wg.Done()
