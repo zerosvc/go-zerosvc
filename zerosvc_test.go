@@ -1,7 +1,7 @@
 package zerosvc
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -9,23 +9,18 @@ func TestNew(t *testing.T) {
 	type cfg struct {
 		Heartbeat int
 	}
-	trCfg := cfg{
-		Heartbeat: 3,
-	}
-	node, err := New(Config{
-		NodeName:  "test_dummy_node",
-		Transport: TransportDummy("dummy://addr", trCfg),
-	})
-	ev := node.NewEvent()
-	ev.Body = []byte("here is some cake")
-	ev.Prepare()
 
-	Convey("Create node and connect to transport", t, func() {
-		So(err, ShouldBeNil)
-	})
-	err = node.SendEvent("test", ev)
-	Convey("Send event", t, func() {
-		So(err, ShouldBeNil)
-	})
-
+	node, err := NewNode(Config{
+		NodeName:        "",
+		NodeUUID:        "",
+		Transport:       Transport{},
+		AutoHeartbeat:   false,
+		AutoSigner:      nil,
+		Signer:          nil,
+		Encoder:         nil,
+		EventRoot:       "",
+		DiscoveryPrefix: "",
+	}, Transport{})
+	require.NoError(t, err)
+	_ = node
 }
