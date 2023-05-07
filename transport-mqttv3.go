@@ -15,33 +15,45 @@ import (
 )
 
 type TransportMQTTv3 struct {
-	client mqtt.Client
+	client     mqtt.Client
+	clientOpts *mqtt.ClientOptions
+}
+
+type ConfigMQTTv3 struct {
+	ID       string
+	WillPath string
+	MQTTURL  []*url.URL
 }
 
 // ID will be mangled to fit 23 characters if it is longer
 // or replaced with client cert ID
-func NewTransportMQTTv3(id string, mqttURL ...*url.URL) (*TransportMQTTv3, error) {
+// willPath points to path where the retain=true empty message will be sent on disconnect
+// to be used with heartbeats to auto-clear presence informatio
+func NewTransportMQTTv3(cfg ConfigMQTTv3) (*TransportMQTTv3, error) {
 	tr := &TransportMQTTv3{}
-	if len(mqttURL) < 1 {
+	if cfg.MQTTURL == nil || len(cfg.MQTTURL) < 1 {
 		return nil, fmt.Errorf("need at least one URL")
 	}
-	clientOpts := mqtt.NewClientOptions()
-	for _, u := range mqttURL {
-		clientOpts.AddBroker(u.Scheme + "://" + u.Host)
+	tr.clientOpts = mqtt.NewClientOptions()
+	for _, u := range cfg.MQTTURL {
+		tr.clientOpts.AddBroker(u.Scheme + "://" + u.Host)
 	}
-	if mqttURL[0].User != nil && mqttURL[0].User.Username() != "" {
-		clientOpts.Username = mqttURL[0].User.Username()
-		clientOpts.Password, _ = mqttURL[0].User.Password()
+	if cfg.MQTTURL[0].User != nil && cfg.MQTTURL[0].User.Username() != "" {
+		tr.clientOpts.Username = cfg.MQTTURL[0].User.Username()
+		tr.clientOpts.Password, _ = cfg.MQTTURL[0].User.Password()
 	}
-	clientOpts.SetAutoReconnect(true)
-	clientOpts.SetConnectRetry(true)
-	clientOpts.SetConnectRetryInterval(time.Second * 10)
-	clientOpts.SetMaxReconnectInterval(time.Minute)
-	if mqttURL[0].Scheme == "ssl" {
+	tr.clientOpts.SetAutoReconnect(true)
+	tr.clientOpts.SetConnectRetry(true)
+	tr.clientOpts.SetConnectRetryInterval(time.Second * 10)
+	tr.clientOpts.SetMaxReconnectInterval(time.Minute)
+	if len(cfg.WillPath) > 0 {
+		tr.clientOpts.SetWill(cfg.WillPath, "", 1, true)
+	}
+	if cfg.MQTTURL[0].Scheme == "ssl" {
 		var tlsCfg tls.Config
-		if len(mqttURL[0].Query().Get("cert")) > 0 {
-			certPath := mqttURL[0].Query().Get("cert")
-			keyPath := mqttURL[0].Query().Get("certkey")
+		if len(cfg.MQTTURL[0].Query().Get("cert")) > 0 {
+			certPath := cfg.MQTTURL[0].Query().Get("cert")
+			keyPath := cfg.MQTTURL[0].Query().Get("certkey")
 			if len(keyPath) == 0 {
 				keyPath = certPath
 			}
@@ -56,44 +68,83 @@ func NewTransportMQTTv3(id string, mqttURL ...*url.URL) (*TransportMQTTv3, error
 				nameParts := strings.Split(parsedCert.Subject.CommonName, ".")
 				// reverse, function later on cuts the front part.
 				goneric.SliceReverseInplace(nameParts)
-				id = strings.Join(nameParts, ".")
+				cfg.ID = strings.Join(nameParts, ".")
 			}
 		}
-		if len(mqttURL[0].Query().Get("ca")) > 0 {
+		if len(cfg.MQTTURL[0].Query().Get("ca")) > 0 {
 			certpool := x509.NewCertPool()
-			pem, err := ioutil.ReadFile(mqttURL[0].Query().Get("ca"))
+			pem, err := ioutil.ReadFile(cfg.MQTTURL[0].Query().Get("ca"))
 			if err != nil {
 				return nil, fmt.Errorf("error loading CA: %s", err)
 			}
 			certpool.AppendCertsFromPEM(pem)
 			tlsCfg.RootCAs = certpool
 		}
-		clientOpts.SetTLSConfig(&tlsCfg)
+		tr.clientOpts.SetTLSConfig(&tlsCfg)
 	}
 	// MQTT3 limit
-	if len(id) == 0 {
+	if len(cfg.ID) == 0 {
 		return nil, fmt.Errorf("id is required")
 	}
-	if len(id) <= 23 {
-		clientOpts.SetClientID(id)
+	if len(cfg.ID) <= 23 {
+		tr.clientOpts.SetClientID(cfg.ID)
 	} else {
 		h := sha256.New()
-		h.Write([]byte(id))
+		h.Write([]byte(cfg.ID))
 		hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
-		clientOpts.SetClientID(id[len(id)-12:] + hash[:11])
+		tr.clientOpts.SetClientID(cfg.ID[len(cfg.ID)-12:] + hash[:11])
 	}
-	tr.client = mqtt.NewClient(clientOpts)
-	connectToken := tr.client.Connect()
+
+	return tr, nil
+}
+func (t *TransportMQTTv3) Connect(h Hooks) error {
+	if h.ConnectHook != nil {
+		t.clientOpts.SetOnConnectHandler(func(c mqtt.Client) {
+			h.ConnectHook()
+		})
+	}
+	if h.ConnectionLossHook != nil {
+		t.clientOpts.SetConnectionLostHandler(
+			func(c mqtt.Client, err error) {
+				h.ConnectionLossHook(err)
+			})
+	}
+	t.client = mqtt.NewClient(t.clientOpts)
+
+	connectToken := t.client.Connect()
 	notTimedOut := connectToken.WaitTimeout(time.Minute)
 	if notTimedOut {
-		return tr, connectToken.Error()
+		return connectToken.Error()
 	} else {
-		return nil, fmt.Errorf("timed out on connection [%s]", connectToken.Error())
+		return fmt.Errorf("timed out on connection [%s]", connectToken.Error())
 	}
 }
 
-func (t *TransportMQTTv3) Publish(topic string, data []byte) error {
-	token := t.client.Publish(topic, 1, true, data)
+func (t *TransportMQTTv3) Publish(topic string, data []byte, retain bool) error {
+	token := t.client.Publish(topic, 1, retain, data)
 	token.Wait()
 	return token.Error()
+}
+
+func (t *TransportMQTTv3) Subscribe(topic string, data chan *Message) error {
+	cb := func(client mqtt.Client, msg mqtt.Message) {
+		m := Message{
+			Topic:   msg.Topic(),
+			Payload: msg.Payload(),
+		}
+		data <- &m
+	}
+	token := t.client.Subscribe(topic, 1, cb)
+	token.Wait()
+	return token.Error()
+}
+func (t *TransportMQTTv3) SetConnectHandler(topic string, data []byte) {
+}
+
+func (t *TransportMQTTv3) Disconnect() {
+	if t.client != nil {
+		t.client.Disconnect(10000)
+	}
+	// make sure it is NOT reused.
+	t.client = nil
 }

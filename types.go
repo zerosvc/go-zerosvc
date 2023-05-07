@@ -43,7 +43,11 @@ type Decoder interface {
 	Unmarshal(data []byte, v any) error
 }
 
-type Transport struct {
+type Transport interface {
+	Publish(topic string, data []byte, retain bool) error
+	Subscribe(topic string, data chan *Message) error
+	// Connect will be called once initially. Transport is the one that should handle reconnections
+	Connect(Hooks) error
 }
 
 type Event struct {

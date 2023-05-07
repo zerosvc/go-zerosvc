@@ -2,7 +2,10 @@ package zerosvc
 
 import (
 	"crypto/rand"
+	"fmt"
 	g "github.com/XANi/goneric"
+	"github.com/fxamacker/cbor/v2"
+	uuid "github.com/satori/go.uuid"
 	"sync"
 	"time"
 )
@@ -20,10 +23,39 @@ type Node struct {
 	discoveryPath    string
 	eventRoot        string
 	heartbeatEnabled bool
-	Transport        Transport
+	tr               Transport
 	e                Encoder
 	d                Decoder
 	autoTrace        bool
+}
+
+func NewNode(config Config) (*Node, error) {
+	n := Node{
+		Name:      config.NodeName,
+		UUID:      config.NodeUUID,
+		Services:  map[string]Service{},
+		e:         config.Encoder,
+		d:         config.Decoder,
+		autoTrace: true,
+	}
+	if len(config.NodeUUID) == 0 {
+		n.UUID = uuid.NewV5(namespace, n.Name).String()
+	}
+	if config.Encoder == nil {
+		n.e, _ = cbor.CanonicalEncOptions().EncMode()
+	}
+	if config.Decoder == nil {
+		n.d, _ = cbor.DecOptions{}.DecMode()
+	}
+	if config.Transport == nil {
+		return nil, fmt.Errorf("transport required in config")
+	}
+	n.tr = config.Transport
+
+	return &n, n.tr.Connect(Hooks{
+		ConnectHook:        func() { fmt.Printf("connected\n") },
+		ConnectionLossHook: func(e error) { fmt.Printf("err: %s\n", e) },
+	})
 }
 
 func (n *Node) NewEvent(traceSpanId ...[]byte) Event {
@@ -75,7 +107,11 @@ func (n *Node) PrepareReply(ev Event) Event {
 }
 
 func (n *Node) SendEvent(path string, ev Event) error {
-	return nil
+	data, err := ev.Serialize()
+	if err != nil {
+		return err
+	}
+	return n.tr.Publish(n.eventRoot+"/"+path, data, false)
 }
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {
