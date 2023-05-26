@@ -162,7 +162,7 @@ func (n *Node) GetEvents(filter string, ch chan Event) error {
 func (n *Node) GetReplyChan() (path string, replyCh chan Event, err error) {
 	id := mapBytesToTopicTitle(rngBlob(16))
 	path = "reply/node-" + n.Name + "/" + id
-	rspCh, err := n.GetEventsCh(path + "/#")
+	rspCh, err := n.GetEventsCh(path)
 	return path, rspCh, err
 }
 
