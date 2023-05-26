@@ -113,6 +113,9 @@ func prepareAMQPMsg(ev *Event) amqp.Publishing {
 		// TODO coerce any ints into string (ms)
 		msg.Expiration = ev.Headers["_transport-ttl"].(string)
 	}
+	if len(ev.ReplyTo) > 0 {
+		msg.ReplyTo = ev.ReplyTo
+	}
 	msg.Headers = ev.Headers
 	return msg
 }

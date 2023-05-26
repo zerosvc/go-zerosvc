@@ -15,7 +15,7 @@ func TransportDummy(addr string, cfg interface{}) Transport {
 	return &t
 }
 
-//  print msg to stdout
+// print msg to stdout
 func (t *trDummy) SendEvent(path string, ev Event) error {
 	if t.T != nil {
 		t.T.Logf("SendEvent path: %s, data: %+v\n", path, ev)

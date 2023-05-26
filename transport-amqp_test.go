@@ -179,7 +179,7 @@ func TestAMQPTransport_MultiACKqueue(t *testing.T) {
 	}
 	msgCount := 0
 	for _, m := range msgs {
-		for _, _ = range m {
+		for range m {
 			msgCount++
 		}
 	}
