@@ -1,8 +1,13 @@
 package zerosvc
 
 type Message struct {
-	Topic   string
-	Payload []byte
+	Topic           string
+	ResponseTopic   string
+	CorrelationData []byte
+	ContentType     string
+	Metadata        map[string]string
+	Payload         []byte
+	Retain          bool
 }
 
 type Hooks struct {

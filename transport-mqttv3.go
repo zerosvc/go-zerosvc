@@ -120,8 +120,8 @@ func (t *TransportMQTTv3) Connect(h Hooks) error {
 	}
 }
 
-func (t *TransportMQTTv3) Publish(topic string, data []byte, retain bool) error {
-	token := t.client.Publish(topic, 1, retain, data)
+func (t *TransportMQTTv3) Publish(m Message) error {
+	token := t.client.Publish(m.Topic, 1, m.Retain, m.Payload)
 	token.Wait()
 	return token.Error()
 }

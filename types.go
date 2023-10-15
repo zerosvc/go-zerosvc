@@ -44,7 +44,7 @@ type Decoder interface {
 }
 
 type Transport interface {
-	Publish(topic string, data []byte, retain bool) error
+	Publish(Message) error
 	Subscribe(topic string, data chan *Message) error
 	// Connect will be called once initially. Transport is the one that should handle reconnections
 	Connect(Hooks) error

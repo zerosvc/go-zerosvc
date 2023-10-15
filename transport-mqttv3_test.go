@@ -27,7 +27,15 @@ func TestNewTransportMQTTV3(t *testing.T) {
 	chName := "_test/" + t.Name()
 	subCh := make(chan *Message, 8)
 	require.NoError(t, tr.Subscribe(chName, subCh))
-	require.NoError(t, tr.Publish("_test/"+t.Name(), tdata, false))
+	require.NoError(t, tr.Publish(Message{
+		Topic:           "_test/" + t.Name(),
+		ResponseTopic:   "",
+		CorrelationData: nil,
+		ContentType:     "",
+		Metadata:        nil,
+		Payload:         tdata,
+		Retain:          false,
+	}))
 	ret := goneric.ChanToSliceNTimeout(subCh, 1, time.Second*5)
 	assert.Len(t, ret, 1)
 	assert.Equal(t, tdata, ret[0].Payload)

@@ -111,7 +111,17 @@ func (n *Node) SendEvent(path string, ev Event) error {
 	if err != nil {
 		return err
 	}
-	return n.tr.Publish(n.eventRoot+"/"+path, data, false)
+	return n.tr.Publish(
+		Message{
+			Topic:           n.eventRoot + "/" + path,
+			ResponseTopic:   "",
+			CorrelationData: nil,
+			ContentType:     "",
+			Metadata:        nil,
+			Payload:         data,
+			Retain:          false,
+		},
+	)
 }
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {

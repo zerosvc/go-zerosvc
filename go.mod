@@ -11,6 +11,7 @@ require (
 require (
 	github.com/XANi/goneric v1.1.1-0.20230503203402-e0b241fab05f // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/eclipse/paho.golang v0.11.0 // indirect
 	github.com/eclipse/paho.mqtt.golang v1.4.2 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 // indirect
