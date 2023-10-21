@@ -12,6 +12,7 @@ import (
 
 type TransportMQTTv5 struct {
 	mqttCtx context.Context
+	mqttCfg mqtt.ClientConfig
 	client  *mqtt.ConnectionManager
 	router  paho.Router
 	timeout time.Duration
@@ -59,7 +60,7 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		EnableManualAcknowledgment: false,
 		SendAcksInterval:           0,
 	}
-	mqttCfg := mqtt.ClientConfig{
+	mqttTr.mqttCfg = mqtt.ClientConfig{
 		BrokerUrls:        cfg.MQTTURL,
 		TlsCfg:            tlsC,
 		KeepAlive:         30,
@@ -73,16 +74,24 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		PahoErrors:        nil,
 		ClientConfig:      clientMqttConfig,
 	}
-	conn, err := mqtt.NewConnection(nil, mqttCfg)
-	if err != nil {
-		return nil, err
-	}
-	connectCtx, _ := context.WithTimeout(mqttTr.mqttCtx, time.Second*30)
-	if err = conn.AwaitConnection(connectCtx); err != nil {
-		return nil, fmt.Errorf("error connecting to mq: %w", err)
-	}
-	mqttTr.client = conn
 	return mqttTr, nil
+}
+func (t *TransportMQTTv5) Connect(h Hooks) error {
+	if h.ConnectHook != nil {
+		t.mqttCfg.OnConnectionUp = func(cm *mqtt.ConnectionManager, ca *paho.Connack) {
+			h.ConnectHook()
+		}
+	}
+	conn, err := mqtt.NewConnection(t.mqttCtx, t.mqttCfg)
+	if err != nil {
+		return err
+	}
+	connectCtx, _ := context.WithTimeout(t.mqttCtx, time.Second*30)
+	if err = conn.AwaitConnection(connectCtx); err != nil {
+		return fmt.Errorf("error connecting to mq: %w", err)
+	}
+	t.client = conn
+	return nil
 }
 func (t *TransportMQTTv5) Publish(m Message) error {
 	pubTimeout, _ := context.WithTimeout(t.mqttCtx, t.timeout)
@@ -105,8 +114,11 @@ func (t *TransportMQTTv5) Publish(m Message) error {
 	}
 	resp, err := t.client.Publish(pubTimeout, ev)
 	if err != nil {
-		return fmt.Errorf("pub %w: %s[%d]", err, resp.Properties.ReasonString, resp.ReasonCode)
+		//return fmt.Errorf("pub %w: %s[%d]", err, resp.Properties.ReasonString, resp.ReasonCode)
+		fmt.Printf("pub %s:\n", err)
+		return fmt.Errorf("pub %w:", err)
 	}
+	_ = resp
 	return nil
 }
 
@@ -141,6 +153,11 @@ func (t *TransportMQTTv5) Subscribe(topic string, data chan *Message) error {
 				msg.Metadata[prop.Key] = prop.Value
 			}
 		}
+		data <- &msg
 	})
 	return nil
+}
+
+func (t *TransportMQTTv5) Disconnect() error {
+	return t.client.Disconnect(t.mqttCtx)
 }
