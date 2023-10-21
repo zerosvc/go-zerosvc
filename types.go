@@ -59,8 +59,8 @@ type Event struct {
 	ReplyTo   string         `cbor:"rt" json:"rt"`
 	Headers   map[string]any `cbor:"headers" json:"headers"`
 	Signature []byte         `cbor:"-" json:"-"`
-	Body      any
-	n         *Node `cbor:"-" json:"-"`
+	Body      []byte         `cbor:"-" json:"-"`
+	n         *Node          `cbor:"-" json:"-"`
 }
 
 type Service struct {

@@ -1,12 +1,18 @@
 package zerosvc
 
 import (
+	//	"bufio"
+	//	"fmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/url"
+
+	//	"os"
+	//	"strings"
 	"testing"
 )
 
-func TestNewNode(t *testing.T) {
+func TestNode(t *testing.T) {
 	tr, err := NewTransportMQTTv3(ConfigMQTTv3{
 		ID:       t.Name(),
 		WillPath: "",
@@ -14,19 +20,25 @@ func TestNewNode(t *testing.T) {
 	})
 	require.NoError(t, err)
 	node, err := NewNode(Config{
-		NodeName:        "testNode",
-		NodeUUID:        "",
-		AutoHeartbeat:   false,
-		Transport:       tr,
-		AutoSigner:      nil,
-		Signer:          nil,
-		Encoder:         nil,
-		Decoder:         nil,
-		EventRoot:       "",
-		DiscoveryPrefix: "",
+		NodeName:  "node-" + t.Name(),
+		NodeUUID:  "77ab2b23-4f1b-4247-be45-dcc2d93ffb94",
+		Transport: tr,
 	})
 	require.NoError(t, err)
-	ev := node.NewEvent()
-	path := "_t/" + t.Name()
-	require.NoError(t, node.SendEvent(path, ev))
+	assert.Equal(t, "node-"+t.Name(), node.Name)
+	assert.Equal(t, "77ab2b23-4f1b-4247-be45-dcc2d93ffb94", node.UUID)
+
+	node3, err := NewNode(Config{
+		NodeName:  "testnode",
+		Transport: tr,
+	})
+	require.NoError(t, err)
+	node4, err := NewNode(
+		Config{
+			NodeName:  "testnode",
+			Transport: tr,
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, node3.UUID, node4.UUID)
 }

@@ -3,6 +3,7 @@ package zerosvc
 import (
 	"bytes"
 	"fmt"
+	"github.com/fxamacker/cbor/v2"
 )
 
 // Serialize serializes event into binary blob. Format:
@@ -49,4 +50,17 @@ func (e *Event) Deserialize(in []byte, node *Node) (ev *Event, err error) {
 	}
 	err = node.d.Unmarshal(in, ev)
 	return ev, err
+}
+
+func (e *Event) Marshal(v interface{}) error {
+	data, err := cbor.Marshal(v)
+	if err != nil {
+		return err
+	}
+	e.Body = data
+	return nil
+}
+func (e *Event) Unmarshal(v interface{}) error {
+	return cbor.Unmarshal(e.Body, v)
+
 }

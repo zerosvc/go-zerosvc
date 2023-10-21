@@ -52,16 +52,13 @@ func NewNode(config Config) (*Node, error) {
 	}
 	n.tr = config.Transport
 
-	return &n, n.tr.Connect(Hooks{
-		ConnectHook:        func() { fmt.Printf("connected\n") },
-		ConnectionLossHook: func(e error) { fmt.Printf("err: %s\n", e) },
-	})
+	return &n, n.tr.Connect(Hooks{})
 }
 
 func (n *Node) NewEvent(traceSpanId ...[]byte) Event {
 	ev := Event{
-		NodeUUID:  n.Name,
-		NodeName:  n.UUID,
+		NodeName:  n.Name,
+		NodeUUID:  n.UUID,
 		ReplyTo:   "",
 		Headers:   map[string]any{},
 		Signature: nil,
