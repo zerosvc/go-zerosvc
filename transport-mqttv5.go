@@ -126,8 +126,9 @@ func (t *TransportMQTTv5) Subscribe(topic string, data chan *Message) error {
 	subTimeout, _ := context.WithTimeout(t.mqttCtx, t.timeout)
 	sub := &paho.Subscribe{
 		Properties: nil,
-		Subscriptions: map[string]paho.SubscribeOptions{
-			topic: {
+		Subscriptions: []paho.SubscribeOptions{
+			{
+				Topic:             topic,
 				QoS:               2, // TODO not sure
 				RetainHandling:    0,
 				NoLocal:           false,
