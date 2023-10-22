@@ -95,14 +95,16 @@ func NewTransportMQTTv3(cfg ConfigMQTTv3) (*TransportMQTTv3, error) {
 	return tr, nil
 }
 func (t *TransportMQTTv3) Connect(h Hooks, willPath string) error {
+	//if len(willPath) > 0 { // running with empty will path will cause client to timeout
+	fmt.Printf("will path: %s\n", willPath)
+	t.clientOpts.SetBinaryWill(willPath, []byte{}, 1, true)
+	//}
 	if h.ConnectHook != nil {
 		t.clientOpts.SetOnConnectHandler(func(c mqtt.Client) {
 			h.ConnectHook()
 		})
 	}
-	//if len(willPath) > 0 { // running with empty will path will cause client to timeout
-	t.clientOpts.SetWill(willPath, "", 0, false)
-	//}
+
 	if h.ConnectionLossHook != nil {
 		t.clientOpts.SetConnectionLostHandler(
 			func(c mqtt.Client, err error) {

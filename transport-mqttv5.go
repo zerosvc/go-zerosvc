@@ -64,7 +64,7 @@ func (t *TransportMQTTv5) Connect(h Hooks, willPath string) error {
 		willPath,
 		[]byte{},
 		1,
-		false,
+		true,
 	)
 	if h.ConnectHook != nil {
 		t.mqttCfg.OnConnectionUp = func(cm *mqtt.ConnectionManager, ca *paho.Connack) {
