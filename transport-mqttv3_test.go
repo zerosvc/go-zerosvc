@@ -12,15 +12,14 @@ import (
 
 func TestNewTransportMQTTV3(t *testing.T) {
 	tr, err := NewTransportMQTTv3(ConfigMQTTv3{
-		ID:       t.Name(),
-		WillPath: "",
-		MQTTURL:  []*url.URL{getTestMQURL()},
+		ID:      t.Name(),
+		MQTTURL: []*url.URL{getTestMQURL()},
 	})
 	connected := false
 	require.NoError(t, tr.Connect(Hooks{
 		ConnectHook:        func() { connected = true },
 		ConnectionLossHook: func(e error) {},
-	}))
+	}, "discovery/test"))
 	require.NoError(t, err)
 	tdata := make([]byte, 8)
 	rand.Read(tdata)
@@ -44,12 +43,11 @@ func TestNewTransportMQTTV3(t *testing.T) {
 	tr.Disconnect()
 
 	tr2, err := NewTransportMQTTv3(ConfigMQTTv3{
-		ID:       "very-long-id-name-that-exceeds-mqtt-clientid-length",
-		WillPath: "",
-		MQTTURL:  []*url.URL{getTestMQURL()},
+		ID:      "very-long-id-name-that-exceeds-mqtt-clientid-length",
+		MQTTURL: []*url.URL{getTestMQURL()},
 	})
 	require.NoError(t, err)
-	require.NoError(t, tr2.Connect(Hooks{}))
+	require.NoError(t, tr2.Connect(Hooks{}, "discovery/text"))
 	tr2.Disconnect()
 	assert.Panics(t, func() {
 		tr2.Subscribe(chName, subCh)

@@ -2,10 +2,12 @@ package zerosvc
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	g "github.com/XANi/goneric"
 	"github.com/fxamacker/cbor/v2"
 	uuid "github.com/satori/go.uuid"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,6 +31,12 @@ type Node struct {
 	autoTrace        bool
 }
 
+type NodeInfo struct {
+	Name     string
+	UUID     string
+	Services map[string]Service
+}
+
 func NewNode(config Config) (*Node, error) {
 	n := Node{
 		Name:      config.NodeName,
@@ -50,9 +58,13 @@ func NewNode(config Config) (*Node, error) {
 	if config.Transport == nil {
 		return nil, fmt.Errorf("transport required in config")
 	}
+	n.discoveryPath = strings.Join([]string{"discovery", n.Name, n.UUID}, "/")
 	n.tr = config.Transport
-
-	return &n, n.tr.Connect(Hooks{})
+	err := n.tr.Connect(Hooks{}, n.eventRoot+"/"+n.discoveryPath)
+	if err == nil {
+		n.Heartbeat()
+	}
+	return &n, err
 }
 
 func (n *Node) NewEvent(traceSpanId ...[]byte) Event {
@@ -116,9 +128,22 @@ func (n *Node) SendEvent(path string, ev Event) error {
 			ContentType:     "",
 			Metadata:        nil,
 			Payload:         data,
-			Retain:          false,
+			Retain:          ev.retain,
 		},
 	)
+}
+
+func (n *Node) Heartbeat() {
+	ev := n.NewEvent()
+	v := NodeInfo{
+		Name:     n.Name,
+		UUID:     n.UUID,
+		Services: n.Services,
+	}
+	d, _ := json.Marshal(v)
+	ev.Body = d
+	ev.retain = true
+	n.SendEvent(n.discoveryPath, ev)
 }
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {

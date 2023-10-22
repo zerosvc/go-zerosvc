@@ -20,9 +20,8 @@ type TransportMQTTv3 struct {
 }
 
 type ConfigMQTTv3 struct {
-	ID       string
-	WillPath string
-	MQTTURL  []*url.URL
+	ID      string
+	MQTTURL []*url.URL
 }
 
 // ID will be mangled to fit 23 characters if it is longer
@@ -46,9 +45,7 @@ func NewTransportMQTTv3(cfg ConfigMQTTv3) (*TransportMQTTv3, error) {
 	tr.clientOpts.SetConnectRetry(true)
 	tr.clientOpts.SetConnectRetryInterval(time.Second * 10)
 	tr.clientOpts.SetMaxReconnectInterval(time.Minute)
-	if len(cfg.WillPath) > 0 {
-		tr.clientOpts.SetWill(cfg.WillPath, "", 1, true)
-	}
+
 	if cfg.MQTTURL[0].Scheme == "ssl" {
 		var tlsCfg tls.Config
 		if len(cfg.MQTTURL[0].Query().Get("cert")) > 0 {
@@ -97,12 +94,15 @@ func NewTransportMQTTv3(cfg ConfigMQTTv3) (*TransportMQTTv3, error) {
 
 	return tr, nil
 }
-func (t *TransportMQTTv3) Connect(h Hooks) error {
+func (t *TransportMQTTv3) Connect(h Hooks, willPath string) error {
 	if h.ConnectHook != nil {
 		t.clientOpts.SetOnConnectHandler(func(c mqtt.Client) {
 			h.ConnectHook()
 		})
 	}
+	//if len(willPath) > 0 { // running with empty will path will cause client to timeout
+	t.clientOpts.SetWill(willPath, "", 0, false)
+	//}
 	if h.ConnectionLossHook != nil {
 		t.clientOpts.SetConnectionLostHandler(
 			func(c mqtt.Client, err error) {

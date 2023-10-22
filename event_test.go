@@ -10,30 +10,23 @@ import (
 )
 
 func TestEvent(t *testing.T) {
-	tr, err := NewTransportMQTTv3(ConfigMQTTv3{
-		ID:       t.Name(),
-		WillPath: "",
-		MQTTURL:  []*url.URL{getTestMQURL()},
+	tr, err := NewTransportMQTTv5(ConfigMQTTv5{
+		ID:      t.Name(),
+		MQTTURL: []*url.URL{getTestMQURL()},
 	})
 	nodename := t.Name()
 	node, err := NewNode(Config{
-		NodeName:        nodename,
-		NodeUUID:        "77ab2b23-4f1b-4247-be45-dcc2d93ffb94",
-		Transport:       tr,
-		AutoHeartbeat:   false,
-		AutoSigner:      nil,
-		Signer:          nil,
-		Encoder:         nil,
-		Decoder:         nil,
-		EventRoot:       "test",
-		DiscoveryPrefix: "",
+		NodeName:  nodename,
+		NodeUUID:  "77ab2b23-4f1b-4247-be45-000000000010",
+		Transport: tr,
+		EventRoot: "test",
 	})
 	require.NoError(t, err)
 	ev := node.NewEvent()
 
 	t.Run("create event", func(t *testing.T) {
 		assert.Equal(t, nodename, ev.NodeName)
-		assert.Equal(t, "77ab2b23-4f1b-4247-be45-dcc2d93ffb94", ev.NodeUUID)
+		assert.Equal(t, "77ab2b23-4f1b-4247-be45-000000000010", ev.NodeUUID)
 		assert.Equal(t, time.Time{}, ev.TS)
 
 	})
@@ -56,13 +49,12 @@ func TestEvent(t *testing.T) {
 
 func BenchmarkNewEvent(b *testing.B) {
 	tr, _ := NewTransportMQTTv3(ConfigMQTTv3{
-		ID:       b.Name(),
-		WillPath: "",
-		MQTTURL:  []*url.URL{getTestMQURL()},
+		ID:      b.Name(),
+		MQTTURL: []*url.URL{getTestMQURL()},
 	})
 	node, _ := NewNode(Config{
 		NodeName:  b.Name(),
-		NodeUUID:  "77ab2b23-4f1b-4247-be45-dcc2d93ffb94",
+		NodeUUID:  "77ab2b23-4f1b-4247-be45-000000000012",
 		Transport: tr,
 	})
 	for i := 0; i < b.N; i++ {

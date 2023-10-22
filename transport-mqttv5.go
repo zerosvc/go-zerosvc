@@ -19,9 +19,8 @@ type TransportMQTTv5 struct {
 }
 
 type ConfigMQTTv5 struct {
-	ID       string
-	WillPath string
-	MQTTURL  []*url.URL
+	ID      string
+	MQTTURL []*url.URL
 }
 
 func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
@@ -46,19 +45,8 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 	}
 	mqttTr.router = paho.NewStandardRouter()
 	clientMqttConfig := paho.ClientConfig{
-		ClientID:                   sanitizeClientID(cfg.ID),
-		Conn:                       nil,
-		MIDs:                       nil,
-		AuthHandler:                nil,
-		PingHandler:                nil,
-		Router:                     mqttTr.router,
-		Persistence:                nil,
-		PacketTimeout:              0,
-		OnServerDisconnect:         nil,
-		OnClientError:              nil,
-		PublishHook:                nil,
-		EnableManualAcknowledgment: false,
-		SendAcksInterval:           0,
+		ClientID: sanitizeClientID(cfg.ID),
+		Router:   mqttTr.router,
 	}
 	mqttTr.mqttCfg = mqtt.ClientConfig{
 		BrokerUrls:        cfg.MQTTURL,
@@ -66,17 +54,18 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		KeepAlive:         30,
 		ConnectRetryDelay: 10 * time.Second,
 		ConnectTimeout:    30 * time.Second,
-		WebSocketCfg:      nil,
-		OnConnectionUp:    nil,
-		OnConnectError:    nil,
-		Debug:             nil,
-		PahoDebug:         nil,
-		PahoErrors:        nil,
 		ClientConfig:      clientMqttConfig,
 	}
+
 	return mqttTr, nil
 }
-func (t *TransportMQTTv5) Connect(h Hooks) error {
+func (t *TransportMQTTv5) Connect(h Hooks, willPath string) error {
+	t.mqttCfg.SetWillMessage(
+		willPath,
+		[]byte{},
+		1,
+		false,
+	)
 	if h.ConnectHook != nil {
 		t.mqttCfg.OnConnectionUp = func(cm *mqtt.ConnectionManager, ca *paho.Connack) {
 			h.ConnectHook()

@@ -31,9 +31,6 @@ type Config struct {
 	Decoder Decoder
 	// what prefix will be added to event path. trailing / not required
 	EventRoot string
-	// where to send/receive discovery events. Relative to eventRoot
-	DiscoveryPrefix string
-	//
 }
 
 type Encoder interface {
@@ -47,7 +44,7 @@ type Transport interface {
 	Publish(Message) error
 	Subscribe(topic string, data chan *Message) error
 	// Connect will be called once initially. Transport is the one that should handle reconnections
-	Connect(Hooks) error
+	Connect(hooks Hooks, willTopic string) error
 }
 
 type Event struct {
@@ -60,7 +57,8 @@ type Event struct {
 	Headers   map[string]any `cbor:"headers" json:"headers"`
 	Signature []byte         `cbor:"-" json:"-"`
 	Body      []byte         `cbor:"-" json:"-"`
-	n         *Node          `cbor:"-" json:"-"`
+	retain    bool
+	n         *Node
 }
 
 type Service struct {

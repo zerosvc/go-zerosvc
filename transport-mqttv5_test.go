@@ -14,15 +14,14 @@ import (
 func TestNewTransportMQTTV5(t *testing.T) {
 	log := zaptest.NewLogger(t)
 	tr, err := NewTransportMQTTv5(ConfigMQTTv5{
-		ID:       t.Name(),
-		WillPath: "",
-		MQTTURL:  []*url.URL{getTestMQURL()},
+		ID:      t.Name(),
+		MQTTURL: []*url.URL{getTestMQURL()},
 	})
 	connected := false
 	require.NoError(t, tr.Connect(Hooks{
 		ConnectHook:        func() { connected = true },
 		ConnectionLossHook: func(e error) {},
-	}))
+	}, ""))
 	tr.router.SetDebugLogger(getTestLogger(log.Sugar()))
 	require.NoError(t, err)
 	tdata := make([]byte, 8)
@@ -47,12 +46,11 @@ func TestNewTransportMQTTV5(t *testing.T) {
 	tr.Disconnect()
 
 	tr2, err := NewTransportMQTTv5(ConfigMQTTv5{
-		ID:       "very-long-id-name-that-exceeds-mqtt-clientid-length",
-		WillPath: "",
-		MQTTURL:  []*url.URL{getTestMQURL()},
+		ID:      "very-long-id-name-that-exceeds-mqtt-clientid-length",
+		MQTTURL: []*url.URL{getTestMQURL()},
 	})
 	require.NoError(t, err)
-	require.NoError(t, tr2.Connect(Hooks{}))
+	require.NoError(t, tr2.Connect(Hooks{}, "_test/"+t.Name()))
 	tr2.Disconnect()
 	assert.Panics(t, func() {
 		tr2.Subscribe(chName, subCh)
