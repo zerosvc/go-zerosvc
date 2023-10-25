@@ -1,14 +1,12 @@
 package auth
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestDummy(t *testing.T) {
 	a := New()
 	err := a.LoadCA("../../t-data/ca-crt.pem")
-	Convey("Load cert", t, func() {
-		So(err, ShouldEqual, nil)
-	})
+	assert.NoError(t, err)
 }

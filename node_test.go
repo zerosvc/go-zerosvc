@@ -3,35 +3,42 @@ package zerosvc
 import (
 	//	"bufio"
 	//	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"net/url"
+
 	//	"os"
 	//	"strings"
 	"testing"
 )
 
 func TestNode(t *testing.T) {
-	node1 := NewNode("testnode1", "77ab2b23-4f1b-4247-be45-dcc2d93ffb9c")
-	Convey("New node", t, func() {
-		So(node1.Name, ShouldEqual, "testnode1")
-		So(node1.UUID, ShouldEqual, "77ab2b23-4f1b-4247-be45-dcc2d93ffb9c")
+	tr, err := NewTransportMQTTv3(ConfigMQTTv3{
+		ID:      t.Name(),
+		MQTTURL: []*url.URL{getTestMQURL()},
 	})
-	node2 := NewNode("testnode2")
-	Convey("New node without UUID", t, func() {
-		So(node2.Name, ShouldEqual, "testnode2")
-		So(node2.UUID, ShouldNotEqual, "")
+	require.NoError(t, err)
+	node, err := NewNode(Config{
+		NodeName:  "node-" + t.Name(),
+		NodeUUID:  "77ab2b23-4f1b-4247-be45-000000000000",
+		Transport: tr,
+		EventRoot: "test",
 	})
-	Convey("New node UUID should be deterministic", t, func() {
-		node3 := NewNode("testnode3")
-		node4 := NewNode("testnode3")
-		So(node3.UUID, ShouldEqual, node4.UUID)
-	})
-}
+	require.NoError(t, err)
+	assert.Equal(t, "node-"+t.Name(), node.Name)
+	assert.Equal(t, "77ab2b23-4f1b-4247-be45-000000000000", node.UUID)
 
-func TestNodeTransport(t *testing.T) {
-	node := NewNode("testnode2", "77ab2b23-4f1b-4247-be45-dcc2d93ffb9c")
-	node.SetTransport(NewTransport(TransportDummy, ``))
-	ev := node.NewEvent()
-	ev.Body = []byte("here is more cake")
-	ev.Prepare()
-	node.SendEvent(`/path`, ev)
+	node3, err := NewNode(Config{
+		NodeName:  "testnode",
+		Transport: tr,
+	})
+	require.NoError(t, err)
+	node4, err := NewNode(
+		Config{
+			NodeName:  "testnode",
+			Transport: tr,
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, node3.UUID, node4.UUID)
 }
