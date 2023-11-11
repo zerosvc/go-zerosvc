@@ -17,6 +17,7 @@ import (
 type TransportMQTTv3 struct {
 	client     mqtt.Client
 	clientOpts *mqtt.ClientOptions
+	willPath   string
 }
 
 type ConfigMQTTv3 struct {
@@ -95,8 +96,10 @@ func NewTransportMQTTv3(cfg ConfigMQTTv3) (*TransportMQTTv3, error) {
 	return tr, nil
 }
 func (t *TransportMQTTv3) Connect(h Hooks, willPath string) error {
-	//if len(willPath) > 0 { // running with empty will path will cause client to timeout
-	fmt.Printf("will path: %s\n", willPath)
+	if len(willPath) == 0 { // running with empty will path will cause client to timeout
+		return fmt.Errorf("will required")
+	}
+	t.willPath = willPath
 	t.clientOpts.SetBinaryWill(willPath, []byte{}, 1, true)
 	//}
 	if h.ConnectHook != nil {
@@ -149,4 +152,9 @@ func (t *TransportMQTTv3) Disconnect() {
 	}
 	// make sure it is NOT reused.
 	t.client = nil
+}
+func (t *TransportMQTTv3) HeartbeatMessage(m Message) error {
+	m.Retain = true
+	m.Topic = t.willPath
+	return t.Publish(m)
 }

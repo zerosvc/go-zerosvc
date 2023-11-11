@@ -30,7 +30,8 @@ type Config struct {
 	// decoder. CBOR will be used if not specified. Tags on builtin structs are only prepared for JSON/CBOR so other encoders might generate a bit longer tags
 	Decoder Decoder
 	// what prefix will be added to event path. trailing / not required
-	EventRoot string
+	EventRoot         string
+	HeartbeatInterval time.Duration
 }
 
 type Encoder interface {
@@ -45,6 +46,7 @@ type Transport interface {
 	Subscribe(topic string, data chan *Message) error
 	// Connect will be called once initially. Transport is the one that should handle reconnections
 	Connect(hooks Hooks, willTopic string) error
+	HeartbeatMessage(m Message) error
 }
 
 type Event struct {

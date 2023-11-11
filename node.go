@@ -20,15 +20,16 @@ type Node struct {
 	sync.RWMutex
 	Services map[string]Service
 	// signer governs storing public/private key and decoding the signatures
-	Signer           Signer
-	PubkeyRetriever  func(nodeName string, nodeUUID string) (v Verifier, found bool)
-	discoveryPath    string
-	eventRoot        string
-	heartbeatEnabled bool
-	tr               Transport
-	e                Encoder
-	d                Decoder
-	autoTrace        bool
+	Signer            Signer
+	PubkeyRetriever   func(nodeName string, nodeUUID string) (v Verifier, found bool)
+	heartbeatInterval time.Duration
+	discoveryPath     string
+	eventRoot         string
+	heartbeatEnabled  bool
+	tr                Transport
+	e                 Encoder
+	d                 Decoder
+	autoTrace         bool
 }
 
 type NodeInfo struct {
@@ -38,14 +39,19 @@ type NodeInfo struct {
 }
 
 func NewNode(config Config) (*Node, error) {
+	if config.HeartbeatInterval <= 0 {
+		config.HeartbeatInterval = time.Minute * 5
+	}
 	n := Node{
-		Name:      config.NodeName,
-		UUID:      config.NodeUUID,
-		Services:  map[string]Service{},
-		eventRoot: config.EventRoot,
-		e:         config.Encoder,
-		d:         config.Decoder,
-		autoTrace: true,
+		Name:              config.NodeName,
+		UUID:              config.NodeUUID,
+		Services:          map[string]Service{},
+		eventRoot:         config.EventRoot,
+		e:                 config.Encoder,
+		d:                 config.Decoder,
+		heartbeatInterval: config.HeartbeatInterval,
+		heartbeatEnabled:  true,
+		autoTrace:         true,
 	}
 	if len(config.NodeUUID) == 0 {
 		n.UUID = uuid.NewV5(namespace, n.Name).String()
@@ -63,7 +69,14 @@ func NewNode(config Config) (*Node, error) {
 	n.tr = config.Transport
 	err := n.tr.Connect(Hooks{}, n.eventRoot+"/"+n.discoveryPath)
 	if err == nil {
-		n.Heartbeat()
+		if n.heartbeatEnabled {
+			go func() {
+				for {
+					n.Heartbeat()
+					time.Sleep(n.heartbeatInterval)
+				}
+			}()
+		}
 	}
 	return &n, err
 }
@@ -135,16 +148,19 @@ func (n *Node) SendEvent(path string, ev Event) error {
 }
 
 func (n *Node) Heartbeat() {
-	ev := n.NewEvent()
+	m := Message{
+		ContentType: "application/json",
+		Payload:     nil,
+	}
 	v := NodeInfo{
 		Name:     n.Name,
 		UUID:     n.UUID,
 		Services: n.Services,
 	}
 	d, _ := json.Marshal(v)
-	ev.Body = d
-	ev.retain = true
-	n.SendEvent(n.discoveryPath, ev)
+	m.Payload = d
+	// TODO pass up if possible
+	_ = n.tr.HeartbeatMessage(m)
 }
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {

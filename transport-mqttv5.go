@@ -11,11 +11,12 @@ import (
 )
 
 type TransportMQTTv5 struct {
-	mqttCtx context.Context
-	mqttCfg mqtt.ClientConfig
-	client  *mqtt.ConnectionManager
-	router  paho.Router
-	timeout time.Duration
+	mqttCtx  context.Context
+	mqttCfg  mqtt.ClientConfig
+	client   *mqtt.ConnectionManager
+	router   paho.Router
+	timeout  time.Duration
+	willPath string
 }
 
 type ConfigMQTTv5 struct {
@@ -74,6 +75,7 @@ func (t *TransportMQTTv5) Connect(h Hooks, willPath string) error {
 		1,
 		true,
 	)
+	t.willPath = willPath
 	if h.ConnectHook != nil {
 		t.mqttCfg.OnConnectionUp = func(cm *mqtt.ConnectionManager, ca *paho.Connack) {
 			h.ConnectHook()
@@ -96,7 +98,7 @@ func (t *TransportMQTTv5) Publish(m Message) error {
 	ev := &paho.Publish{
 		PacketID: 0,
 		QoS:      0,
-		Retain:   false,
+		Retain:   m.Retain,
 		Topic:    m.Topic,
 		Properties: &paho.PublishProperties{
 			CorrelationData:        m.CorrelationData,
@@ -155,6 +157,12 @@ func (t *TransportMQTTv5) Subscribe(topic string, data chan *Message) error {
 		data <- &msg
 	})
 	return nil
+}
+
+func (t *TransportMQTTv5) HeartbeatMessage(m Message) error {
+	m.Retain = true
+	m.Topic = t.willPath
+	return t.Publish(m)
 }
 
 func (t *TransportMQTTv5) Disconnect() error {
