@@ -36,8 +36,8 @@ type NodeInfo struct {
 	Name      string             `json:"name" cbor:"name"`
 	UUID      string             `json:"uuid" cbor:"uuid"`
 	TS        time.Time          `json:"ts" cbor:"ts"`
-	PublicKey string             `json:"pub,-" cbor:"pub,-"`
-	Services  map[string]Service `json:"services,-" cbor:"services,-"`
+	PublicKey string             `json:"pub,omitempty" cbor:"pub,omitempty"`
+	Services  map[string]Service `json:"services,omitempty" cbor:"services,omitempty"`
 }
 
 func NewNode(config Config) (*Node, error) {

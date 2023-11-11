@@ -64,8 +64,9 @@ type Event struct {
 }
 
 type Service struct {
-	Name string `json:"name" cbor:"name"`
 	Ok   bool   `json:"ok" cbor:"ok"`
+	Info string `json:"info,omitempty" cbor:"info,omitempty"`
+	Data any    `json:"data,omitempty" cbor:"data,omitempty"`
 }
 
 type ErrSignatureInvalid struct{}
