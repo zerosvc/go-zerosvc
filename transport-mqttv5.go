@@ -56,6 +56,14 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		ConnectTimeout:    30 * time.Second,
 		ClientConfig:      clientMqttConfig,
 	}
+	if len(cfg.MQTTURL[0].User.Username()) > 0 {
+		p, _ := cfg.MQTTURL[0].User.Password()
+
+		mqttTr.mqttCfg.SetUsernamePassword(
+			cfg.MQTTURL[0].User.Username(),
+			[]byte(p),
+		)
+	}
 
 	return mqttTr, nil
 }
@@ -79,6 +87,7 @@ func (t *TransportMQTTv5) Connect(h Hooks, willPath string) error {
 	if err = conn.AwaitConnection(connectCtx); err != nil {
 		return fmt.Errorf("error connecting to mq: %w", err)
 	}
+
 	t.client = conn
 	return nil
 }

@@ -42,6 +42,7 @@ func NewNode(config Config) (*Node, error) {
 		Name:      config.NodeName,
 		UUID:      config.NodeUUID,
 		Services:  map[string]Service{},
+		eventRoot: config.EventRoot,
 		e:         config.Encoder,
 		d:         config.Decoder,
 		autoTrace: true,

@@ -67,3 +67,7 @@ prepare and send event. `Prepare()` takes care of checksums/signatures for the e
 	e.Prepare()
 	node.SendEvent("dpp/ev",e)
 ```
+
+## Quirks
+
+* Due to how MQTT libraries work only first user/password is used for all urls.
