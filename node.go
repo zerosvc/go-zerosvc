@@ -33,9 +33,11 @@ type Node struct {
 }
 
 type NodeInfo struct {
-	Name     string
-	UUID     string
-	Services map[string]Service
+	Name      string             `json:"name" cbor:"name"`
+	UUID      string             `json:"uuid" cbor:"uuid"`
+	TS        time.Time          `json:"ts" cbor:"ts"`
+	PublicKey string             `json:"pub,-" cbor:"pub,-"`
+	Services  map[string]Service `json:"services,-" cbor:"services,-"`
 }
 
 func NewNode(config Config) (*Node, error) {
@@ -152,12 +154,15 @@ func (n *Node) Heartbeat() {
 		ContentType: "application/json",
 		Payload:     nil,
 	}
+	n.RLock()
 	v := NodeInfo{
 		Name:     n.Name,
 		UUID:     n.UUID,
+		TS:       time.Now(),
 		Services: n.Services,
 	}
 	d, _ := json.Marshal(v)
+	n.RUnlock()
 	m.Payload = d
 	// TODO pass up if possible
 	_ = n.tr.HeartbeatMessage(m)

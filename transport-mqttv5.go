@@ -50,7 +50,7 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		Router:   mqttTr.router,
 	}
 	mqttTr.mqttCfg = mqtt.ClientConfig{
-		BrokerUrls:        cfg.MQTTURL,
+		ServerUrls:        cfg.MQTTURL,
 		TlsCfg:            tlsC,
 		KeepAlive:         30,
 		ConnectRetryDelay: 10 * time.Second,
@@ -58,20 +58,25 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		ClientConfig:      clientMqttConfig,
 	}
 	if len(cfg.MQTTURL[0].User.Username()) > 0 {
+		mqttTr.mqttCfg.ConnectUsername = cfg.MQTTURL[0].User.Username()
 		p, _ := cfg.MQTTURL[0].User.Password()
+		mqttTr.mqttCfg.ConnectPassword = []byte(p)
 
-		mqttTr.mqttCfg.SetUsernamePassword(
-			cfg.MQTTURL[0].User.Username(),
-			[]byte(p),
-		)
+		//mqttTr.mqttCfg.SetUsernamePassword(
+		//	cfg.MQTTURL[0].User.Username(),
+		//	[]byte(p),
+		//)
 	}
 
 	return mqttTr, nil
 }
 func (t *TransportMQTTv5) Connect(h Hooks, willPath string) error {
+	if len(willPath) == 0 {
+		return fmt.Errorf("will path must be set")
+	}
 	t.mqttCfg.SetWillMessage(
 		willPath,
-		[]byte{},
+		[]byte(""),
 		1,
 		true,
 	)

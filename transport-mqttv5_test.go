@@ -21,7 +21,7 @@ func TestNewTransportMQTTV5(t *testing.T) {
 	require.NoError(t, tr.Connect(Hooks{
 		ConnectHook:        func() { connected = true },
 		ConnectionLossHook: func(e error) {},
-	}, ""))
+	}, "_test/willTest"))
 	tr.router.SetDebugLogger(getTestLogger(log.Sugar()))
 	require.NoError(t, err)
 	tdata := make([]byte, 8)
