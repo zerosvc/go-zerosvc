@@ -7,6 +7,7 @@ import (
 	g "github.com/XANi/goneric"
 	"github.com/fxamacker/cbor/v2"
 	uuid "github.com/satori/go.uuid"
+	"go.uber.org/zap"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +31,7 @@ type Node struct {
 	e                 Encoder
 	d                 Decoder
 	autoTrace         bool
+	l                 *zap.SugaredLogger
 }
 
 type NodeInfo struct {
@@ -48,12 +50,16 @@ func NewNode(config Config) (*Node, error) {
 		Name:              config.NodeName,
 		UUID:              config.NodeUUID,
 		Services:          map[string]Service{},
+		l:                 config.Logger,
 		eventRoot:         config.EventRoot,
 		e:                 config.Encoder,
 		d:                 config.Decoder,
 		heartbeatInterval: config.HeartbeatInterval,
 		heartbeatEnabled:  true,
 		autoTrace:         true,
+	}
+	if n.l == nil {
+		n.l = zap.NewNop().Sugar()
 	}
 	if len(config.NodeUUID) == 0 {
 		n.UUID = uuid.NewV5(namespace, n.Name).String()
@@ -158,14 +164,17 @@ func (n *Node) Heartbeat() {
 	v := NodeInfo{
 		Name:     n.Name,
 		UUID:     n.UUID,
-		TS:       time.Now(),
+		TS:       time.Now().Truncate(time.Second),
 		Services: n.Services,
 	}
 	d, _ := json.Marshal(v)
 	n.RUnlock()
 	m.Payload = d
 	// TODO pass up if possible
-	_ = n.tr.HeartbeatMessage(m)
+	err := n.tr.HeartbeatMessage(m)
+	if err != nil {
+		n.l.Errorf("error sending heartbeat: %s", err)
+	}
 }
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {

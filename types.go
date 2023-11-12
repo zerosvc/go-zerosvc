@@ -2,6 +2,7 @@ package zerosvc
 
 import (
 	uuid "github.com/satori/go.uuid"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -32,6 +33,7 @@ type Config struct {
 	// what prefix will be added to event path. trailing / not required
 	EventRoot         string
 	HeartbeatInterval time.Duration
+	Logger            *zap.SugaredLogger
 }
 
 type Encoder interface {
