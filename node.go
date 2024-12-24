@@ -179,6 +179,23 @@ func (n *Node) Heartbeat() {
 
 func (n *Node) GetEventsCh(filter string) (chan Event, error) {
 	ch := make(chan Event, 1)
+	messages := make(chan *Message, 1)
+	err := n.tr.Subscribe(n.eventRoot+"/"+filter, messages)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		for m := range messages {
+			ev := &Event{}
+			ev, err := ev.Deserialize(m.Payload, n)
+			if err != nil {
+				n.l.Errorf("error unmarshalling payload [%s]: %s", m.Topic, err)
+				continue
+			}
+			ch <- *ev
+		}
+	}()
+
 	return ch, nil
 }
 

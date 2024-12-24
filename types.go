@@ -60,7 +60,7 @@ type Event struct {
 	ReplyTo   string         `cbor:"rt" json:"rt"`
 	Headers   map[string]any `cbor:"headers" json:"headers"`
 	Signature []byte         `cbor:"-" json:"-"`
-	Body      []byte         `cbor:"-" json:"-"`
+	Body      []byte         `cbor:"b" json:"b"`
 	retain    bool
 	n         *Node
 }

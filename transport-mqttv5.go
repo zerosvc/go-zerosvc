@@ -138,7 +138,6 @@ func (t *TransportMQTTv5) Publish(m Message) error {
 	resp, err := t.client.Publish(pubTimeout, ev)
 	if err != nil {
 		//return fmt.Errorf("pub %w: %s[%d]", err, resp.Properties.ReasonString, resp.ReasonCode)
-		fmt.Printf("pub %s:\n", err)
 		return fmt.Errorf("pub %w:", err)
 	}
 	_ = resp

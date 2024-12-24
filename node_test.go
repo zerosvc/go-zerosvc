@@ -34,6 +34,7 @@ func TestNode(t *testing.T) {
 		Transport: tr,
 	})
 	require.NoError(t, err)
+
 	node4, err := NewNode(
 		Config{
 			NodeName:  "testnode",
@@ -41,15 +42,29 @@ func TestNode(t *testing.T) {
 		})
 	require.NoError(t, err)
 	assert.Equal(t, node3.UUID, node4.UUID)
-	evCh, err := node4.GetEventsCh("t4/#")
+}
+func TestNodeComms(t *testing.T) {
+	tr, err := NewTransportMQTTv3(ConfigMQTTv3{
+		ID:      t.Name(),
+		MQTTURL: []*url.URL{getTestMQURL()},
+	})
+	n, err := NewNode(Config{
+		NodeName:  "node-" + t.Name(),
+		NodeUUID:  "77ab2b23-4f1b-4247-be45-000000000001",
+		Transport: tr,
+		EventRoot: "test",
+	})
 	require.NoError(t, err)
-	ev := node4.NewEvent()
+	evCh, err := n.GetEventsCh("t4/#")
+	require.NoError(t, err)
+	ev := n.NewEvent()
 	ev.Body = []byte("cake")
-	node4.SendEvent("t4/cake", ev)
+	err = n.SendEvent("t4/cake", ev)
+	require.NoError(t, err)
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(time.Second * 10):
 		assert.True(t, false, "receiving message timed out")
 	case ev := <-evCh:
-		assert.Equal(t, ev.Body, []byte("cake"))
+		assert.Equal(t, []byte("cake"), ev.Body)
 	}
 }

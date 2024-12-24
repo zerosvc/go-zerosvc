@@ -38,7 +38,7 @@ func (e *Event) Deserialize(in []byte, node *Node) (ev *Event, err error) {
 	}
 	sigLength := uint8(in[0])
 	if len(in) < (4 + int(sigLength)) {
-		return nil, fmt.Errorf("event data too short after signature")
+		return nil, fmt.Errorf("event data too short after signature[%d %d]", sigLength, len(in))
 	}
 	signature := in[1 : sigLength+1]
 	data := in[1+sigLength:]
@@ -48,7 +48,8 @@ func (e *Event) Deserialize(in []byte, node *Node) (ev *Event, err error) {
 			return nil, ErrSignatureInvalid{}
 		}
 	}
-	err = node.d.Unmarshal(in, ev)
+	ev = &Event{}
+	err = node.d.Unmarshal(in[sigLength+1:], ev)
 	return ev, err
 }
 
