@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/XANi/goneric v1.1.1-0.20230503203402-e0b241fab05f
-	github.com/eclipse/paho.golang v0.12.1-0.20231109001713-01a446ef22f0
+	github.com/eclipse/paho.golang v0.12.1-0.20231119222249-038523579e94
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/fxamacker/cbor/v2 v2.5.0
 	github.com/satori/go.uuid v1.2.0

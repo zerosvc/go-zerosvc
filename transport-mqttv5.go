@@ -63,18 +63,19 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		ConnectRetryDelay: 10 * time.Second,
 		ConnectTimeout:    30 * time.Second,
 		ClientConfig:      clientMqttConfig,
+		ConnectPacketBuilder: func(connect *paho.Connect, u *url.URL) *paho.Connect {
+			if u.User != nil && len(u.User.Username()) > 0 {
+				connect.Username = u.User.Username()
+			}
+			return connect
+		},
 	}
-	if len(cfg.MQTTURL[0].User.Username()) > 0 {
+
+	if cfg.MQTTURL[0].User != nil && len(cfg.MQTTURL[0].User.Username()) > 0 {
 		mqttTr.mqttCfg.ConnectUsername = cfg.MQTTURL[0].User.Username()
 		p, _ := cfg.MQTTURL[0].User.Password()
 		mqttTr.mqttCfg.ConnectPassword = []byte(p)
-
-		//mqttTr.mqttCfg.SetUsernamePassword(
-		//	cfg.MQTTURL[0].User.Username(),
-		//	[]byte(p),
-		//)
 	}
-
 	return mqttTr, nil
 }
 func (t *TransportMQTTv5) Connect(h Hooks, willPath string) error {
@@ -101,7 +102,7 @@ func (t *TransportMQTTv5) Connect(h Hooks, willPath string) error {
 		t.l.Errorf("client error: %s", err)
 	}
 	t.mqttCfg.OnConnectError = func(err error) {
-		t.l.Errorf("error connecting: %s", err)
+		t.l.Errorf("error connecting: %s, %T", err, err)
 	}
 	conn, err := mqtt.NewConnection(t.mqttCtx, t.mqttCfg)
 	if err != nil {

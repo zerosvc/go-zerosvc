@@ -6,6 +6,8 @@ github.com/eclipse/paho.golang v0.12.0 h1:EXQFJbJklDnUqW6lyAknMWRhM2NgpHxwrrL8ri
 github.com/eclipse/paho.golang v0.12.0/go.mod h1:TSDCUivu9JnoR9Hl+H7sQMcHkejWH2/xKK1NJGtLbIE=
 github.com/eclipse/paho.golang v0.12.1-0.20231109001713-01a446ef22f0 h1:gKX5YiFJeq4SQ1AG+9tP48q6g03rlIG27UqjlWRBhA0=
 github.com/eclipse/paho.golang v0.12.1-0.20231109001713-01a446ef22f0/go.mod h1:TSDCUivu9JnoR9Hl+H7sQMcHkejWH2/xKK1NJGtLbIE=
+github.com/eclipse/paho.golang v0.12.1-0.20231119222249-038523579e94 h1:OL2QJOLG8dofSFWIb5hUhczdExyD3HO6mEpqF+3ADk4=
+github.com/eclipse/paho.golang v0.12.1-0.20231119222249-038523579e94/go.mod h1:TSDCUivu9JnoR9Hl+H7sQMcHkejWH2/xKK1NJGtLbIE=
 github.com/eclipse/paho.mqtt.golang v1.4.3 h1:2kwcUGn8seMUfWndX0hGbvH8r7crgcJguQNCyp70xik=
 github.com/eclipse/paho.mqtt.golang v1.4.3/go.mod h1:CSYvoAlsMkhYOXh/oKyxa8EcBci6dVkLCbo5tTC1RIE=
 github.com/fxamacker/cbor/v2 v2.5.0 h1:oHsG0V/Q6E/wqTS2O1Cozzsy69nqCiguo5Q1a1ADivE=
