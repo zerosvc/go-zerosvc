@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/url"
+	"time"
 
 	//	"os"
 	//	"strings"
@@ -39,6 +40,16 @@ func TestNode(t *testing.T) {
 			Transport: tr,
 		})
 	require.NoError(t, err)
-
 	assert.Equal(t, node3.UUID, node4.UUID)
+	evCh, err := node4.GetEventsCh("t4/#")
+	require.NoError(t, err)
+	ev := node4.NewEvent()
+	ev.Body = []byte("cake")
+	node4.SendEvent("t4/cake", ev)
+	select {
+	case <-time.After(time.Second):
+		assert.True(t, false, "receiving message timed out")
+	case ev := <-evCh:
+		assert.Equal(t, ev.Body, []byte("cake"))
+	}
 }
