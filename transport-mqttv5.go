@@ -63,11 +63,11 @@ func NewTransportMQTTv5(cfg ConfigMQTTv5) (*TransportMQTTv5, error) {
 		ConnectRetryDelay: 10 * time.Second,
 		ConnectTimeout:    30 * time.Second,
 		ClientConfig:      clientMqttConfig,
-		ConnectPacketBuilder: func(connect *paho.Connect, u *url.URL) *paho.Connect {
+		ConnectPacketBuilder: func(connect *paho.Connect, u *url.URL) (*paho.Connect, error) {
 			if u.User != nil && len(u.User.Username()) > 0 {
 				connect.Username = u.User.Username()
 			}
-			return connect
+			return connect, nil
 		},
 	}
 
